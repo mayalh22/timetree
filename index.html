@@ -304,7 +304,8 @@
       }
       function drawTree() {
   const trunkWidth = 10;
-  const trunkX = canvas.width / 2 - trunkWidth / 2;
+  const padding = 20;
+  const trunkX = canvas.width - trunkWidth - padding;
   const trunkY = canvas.height;
 
   ctx.fillStyle = '#7b3f00';
@@ -312,10 +313,11 @@
 
   const leafRadius = Math.min(30, treeHeight / 4);
   ctx.beginPath();
-  ctx.arc(canvas.width / 2, trunkY - treeHeight, leafRadius, 0, 2 * Math.PI);
-  ctx.fillStyle = '#228B22';
+  ctx.arc(trunkX + trunkWidth / 2, trunkY - treeHeight, leafRadius, 0, 2 * Math.PI);
+  ctx.fillStyle = '#228B22'; 
   ctx.fill();
 }
+
 
       
 function startTimer() {
