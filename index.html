@@ -2,252 +2,388 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Pixelated Timer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Time Tree</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+  rel="stylesheet"
+/>
 <style>
-  body {
-      background: #004d00; /* dark green background */
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      font-family: monospace;
-      color: #004d00; /* just to avoid default black text on dark bg */
+  :root {
+    --color-bg-dark: #121812;
+    --color-text-light: #e0f8cf;
+    --color-green-accent: #2c3a2f;
+    --color-green-subtle: #89a38f;
+    --font-pixel: 'Press Start 2P', monospace;
   }
 
-  input, button {
-    font-size: 1.5rem;
-    margin: 0.5rem;
-    padding: 0.3rem 0.6rem;
-    font-family: monospace;
-    background-color: #004d00; /* dark green */
-    color: #a0d080; /* light green text */
-    border: 2px solid #002800;
+  body {
+    background: var(--color-bg-dark);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: var(--font-pixel);
+    color: var(--color-text-light);
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+
+  h1 {
+    font-size: 2rem;
+    text-shadow: 2px 2px var(--color-green-accent);
+    margin-bottom: 2rem;
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  input,
+  button {
+    font-size: 0.8rem;
+    font-family: var(--font-pixel);
+    background-color: var(--color-green-accent);
+    color: var(--color-text-light);
+    border: 2px solid var(--color-green-subtle);
+    padding: 0.6rem 1rem;
     border-radius: 4px;
-    outline: none;
-    width: 140px;
-    text-align: center;
     cursor: pointer;
+    text-transform: uppercase;
+    transition: background-color 0.2s, border-color 0.2s;
+    outline: none;
+  }
+
+  input {
+    text-align: center;
+    max-width: 150px;
+    background-color: transparent;
   }
 
   input::placeholder {
-      color: #a0d080;
+    color: var(--color-green-subtle);
+    opacity: 0.8;
   }
 
-  input:focus, button:focus {
-      border-color: #80b080;
-      box-shadow: 0 0 5px #80b080;
+  input:focus,
+  button:hover,
+  button:focus {
+    background-color: var(--color-green-subtle);
+    border-color: var(--color-text-light);
+    color: var(--color-bg-dark);
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 
   canvas {
     image-rendering: pixelated;
-    background: #a0d080; /* lighter green background for canvas */
+    background: var(--color-green-accent);
     margin-top: 1rem;
-    border: 2px solid #002800;
+    border: 2px solid var(--color-green-subtle);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .music-tooltip {
+    font-size: 0.6rem;
+    color: var(--color-green-subtle);
+    margin-top: 0.5rem;
   }
 </style>
 </head>
 <body>
+  <h1>Time Tree</h1>
 
-  <input id="inputSeconds" type="number" min="1" placeholder="Seconds" />
-  <button id="startBtn">Start</button>
+  <div class="controls">
+    <input
+      id="inputSeconds"
+      type="number"
+      min="1"
+      placeholder="Time in seconds"
+      aria-label="Enter time in seconds"
+    />
+    <div>
+      <button id="startPauseBtn" aria-label="Start or Pause Timer">Start</button>
+      <button id="resetBtn" aria-label="Reset Timer">Reset</button>
+    </div>
+  </div>
 
-  <button id="musicBtn">Play Music</button>
+  <button id="musicBtn" aria-label="Toggle background music">Play Music</button>
   <audio id="bgMusic" loop>
-    <source src="https://cdn.pixabay.com/download/audio/2022/03/03/audio_2d59e2f48f.mp3?filename=relaxing-music-ambient-3781.mp3" type="audio/mpeg" />
+    <source
+      src="https://cdn.pixabay.com/download/audio/2022/03/03/audio_2d59e2f48f.mp3?filename=relaxing-music-ambient-3781.mp3"
+      type="audio/mpeg"
+    />
   </audio>
 
-  <canvas id="timerCanvas" width="400" height="100"></canvas>
+  <canvas id="timerCanvas" width="600" height="200"></canvas>
 
-<script>
-  const canvas = document.getElementById('timerCanvas');
-  const ctx = canvas.getContext('2d');
-  const startBtn = document.getElementById('startBtn');
-  const input = document.getElementById('inputSeconds');
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- DOM Elements & Constants ---
+      const canvas = document.getElementById('timerCanvas');
+      const ctx = canvas.getContext('2d');
+      const startPauseBtn = document.getElementById('startPauseBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const musicBtn = document.getElementById('musicBtn');
+      const input = document.getElementById('inputSeconds');
+      const bgMusic = document.getElementById('bgMusic');
 
-  const PIXEL_SIZE = 10;
-  const digits = {
-    '0': [
-      [1,1,1,1,1],
-      [1,0,0,0,1],
-      [1,0,0,1,1],
-      [1,0,1,0,1],
-      [1,1,0,0,1],
-      [1,0,0,0,1],
-      [1,1,1,1,1],
-    ],
-    '1': [
-      [0,0,1,0,0],
-      [0,1,1,0,0],
-      [1,0,1,0,0],
-      [0,0,1,0,0],
-      [0,0,1,0,0],
-      [0,0,1,0,0],
-      [1,1,1,1,1],
-    ],
-    '2': [
-      [1,1,1,1,1],
-      [0,0,0,0,1],
-      [0,0,0,1,1],
-      [0,0,1,1,0],
-      [0,1,1,0,0],
-      [1,1,0,0,0],
-      [1,1,1,1,1],
-    ],
-    '3': [
-      [1,1,1,1,1],
-      [0,0,0,0,1],
-      [0,0,1,1,1],
-      [0,0,0,0,1],
-      [0,0,0,0,1],
-      [0,0,0,0,1],
-      [1,1,1,1,1],
-    ],
-    '4': [
-      [1,0,0,1,0],
-      [1,0,0,1,0],
-      [1,0,0,1,0],
-      [1,1,1,1,1],
-      [0,0,0,1,0],
-      [0,0,0,1,0],
-      [0,0,0,1,0],
-    ],
-    '5': [
-      [1,1,1,1,1],
-      [1,0,0,0,0],
-      [1,1,1,1,0],
-      [0,0,0,0,1],
-      [0,0,0,0,1],
-      [1,0,0,0,1],
-      [0,1,1,1,0],
-    ],
-    '6': [
-      [0,1,1,1,0],
-      [1,0,0,0,0],
-      [1,0,0,0,0],
-      [1,1,1,1,0],
-      [1,0,0,0,1],
-      [1,0,0,0,1],
-      [0,1,1,1,0],
-    ],
-    '7': [
-      [1,1,1,1,1],
-      [0,0,0,0,1],
-      [0,0,0,1,0],
-      [0,0,1,0,0],
-      [0,1,0,0,0],
-      [0,1,0,0,0],
-      [0,1,0,0,0],
-    ],
-    '8': [
-      [0,1,1,1,0],
-      [1,0,0,0,1],
-      [1,0,0,0,1],
-      [0,1,1,1,0],
-      [1,0,0,0,1],
-      [1,0,0,0,1],
-      [0,1,1,1,0],
-    ],
-    '9': [
-      [0,1,1,1,0],
-      [1,0,0,0,1],
-      [1,0,0,0,1],
-      [0,1,1,1,1],
-      [0,0,0,0,1],
-      [0,0,0,0,1],
-      [0,1,1,1,0],
-    ],
-    ':': [
-      [0],
-      [1],
-      [0],
-      [0],
-      [1],
-      [0],
-      [0],
-    ],
-  };
+      const PIXEL_SIZE = 25;
+      const FONT_COLOR = '#e0f8cf';
+      const DIGIT_WIDTH = 5;
+      const DIGIT_HEIGHT = 7;
+      const DIGIT_SPACING = 2;
+      
+      let countdownInterval;
+      let isRunning = false;
+      let timeLeft = 0;
+      let totalSeconds;
 
-  function drawDigit(digit, x, y) {
-    const pattern = digits[digit];
-    if (!pattern) return;
-    for (let row = 0; row < pattern.length; row++) {
-      for (let col = 0; col < pattern[row].length; col++) {
-        if (pattern[row][col] === 1) {
-          ctx.fillRect(x + col * PIXEL_SIZE, y + row * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+      const digits = {
+        '0': [
+          [0,1,1,1,0],
+          [1,0,0,0,1],
+          [1,0,0,0,1],
+          [1,0,0,0,1],
+          [1,0,0,0,1],
+          [1,0,0,0,1],
+          [0,1,1,1,0]
+        ],
+        '1': [
+          [0,0,1,0,0],
+          [0,1,1,0,0],
+          [0,0,1,0,0],
+          [0,0,1,0,0],
+          [0,0,1,0,0],
+          [0,0,1,0,0],
+          [1,1,1,1,1]
+        ],
+        '2': [
+          [1,1,1,1,1],
+          [0,0,0,0,1],
+          [0,0,0,1,0],
+          [0,0,1,0,0],
+          [0,1,0,0,0],
+          [1,0,0,0,0],
+          [1,1,1,1,1]
+        ],
+        '3': [
+          [1,1,1,1,1],
+          [0,0,0,0,1],
+          [0,0,1,1,1],
+          [0,0,0,0,1],
+          [0,0,0,0,1],
+          [0,0,0,0,1],
+          [1,1,1,1,1]
+        ],
+        '4': [
+          [1,0,0,0,1],
+          [1,0,0,0,1],
+          [1,0,0,0,1],
+          [1,1,1,1,1],
+          [0,0,0,0,1],
+          [0,0,0,0,1],
+          [0,0,0,0,1]
+        ],
+        '5': [
+          [1,1,1,1,1],
+          [1,0,0,0,0],
+          [1,1,1,1,0],
+          [0,0,0,0,1],
+          [0,0,0,0,1],
+          [1,0,0,0,1],
+          [0,1,1,1,0]
+        ],
+        '6': [
+          [0,1,1,1,0],
+          [1,0,0,0,0],
+          [1,0,0,0,0],
+          [1,1,1,1,0],
+          [1,0,0,0,1],
+          [1,0,0,0,1],
+          [0,1,1,1,0]
+        ],
+        '7': [
+          [1,1,1,1,1],
+          [0,0,0,0,1],
+          [0,0,0,1,0],
+          [0,0,1,0,0],
+          [0,1,0,0,0],
+          [0,1,0,0,0],
+          [0,1,0,0,0]
+        ],
+        '8': [
+          [0,1,1,1,0],
+          [1,0,0,0,1],
+          [1,0,0,0,1],
+          [0,1,1,1,0],
+          [1,0,0,0,1],
+          [1,0,0,0,1],
+          [0,1,1,1,0]
+        ],
+        '9': [
+          [0,1,1,1,0],
+          [1,0,0,0,1],
+          [1,0,0,0,1],
+          [0,1,1,1,1],
+          [0,0,0,0,1],
+          [0,0,0,0,1],
+          [0,1,1,1,0]
+        ],
+        ':': [
+          [0,0],
+          [0,1],
+          [0,0],
+          [0,0],
+          [0,1],
+          [0,0],
+          [0,0]
+        ]
+      };
+
+      // --- Timer Logic Functions ---
+      function drawDigit(digit, x, y) {
+        const pattern = digits[digit];
+        if (!pattern) return;
+
+        ctx.fillStyle = FONT_COLOR;
+        for (let row = 0; row < pattern.length; row++) {
+          for (let col = 0; col < pattern[row].length; col++) {
+            if (pattern[row][col] === 1) {
+              ctx.fillRect(
+                x + col * PIXEL_SIZE,
+                y + row * PIXEL_SIZE,
+                PIXEL_SIZE,
+                PIXEL_SIZE
+              );
+            }
+          }
         }
       }
-    }
-  }
 
-  function formatTime(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-  }
+      function formatTime(ms) {
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const milliseconds = Math.floor((ms % 1000) / 10);
+        
+        const mStr = String(minutes).padStart(2, '0');
+        const sStr = String(seconds).padStart(2, '0');
+        const msStr = String(milliseconds).padStart(2, '0');
 
-  function drawTime(str) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#004d00'; // dark green text color
-    const digitWidth = 5 * PIXEL_SIZE;
-    const colonWidth = PIXEL_SIZE;
-    let width = 0;
-    for (let ch of str) {
-      width += (ch === ':' ? colonWidth : digitWidth) + PIXEL_SIZE;
-    }
-    width -= PIXEL_SIZE;
-
-    let startX = (canvas.width - width) / 2;
-    const startY = (canvas.height - 7 * PIXEL_SIZE) / 2;
-
-    for (let ch of str) {
-      drawDigit(ch, startX, startY);
-      startX += (ch === ':' ? colonWidth : digitWidth) + PIXEL_SIZE;
-    }
-  }
-
-  let countdown;
-
-  startBtn.addEventListener('click', () => {
-    let timeLeft = parseInt(input.value, 10);
-    if (isNaN(timeLeft) || timeLeft < 1) return;
-
-    clearInterval(countdown);
-    drawTime(formatTime(timeLeft));
-
-    startBtn.disabled = true;
-    input.disabled = true;
-
-    countdown = setInterval(() => {
-      timeLeft--;
-      drawTime(formatTime(timeLeft));
-      if (timeLeft <= 0) {
-        clearInterval(countdown);
-        startBtn.disabled = false;
-        input.disabled = false;
+        return `${mStr}:${sStr}:${msStr}`;
       }
-    }, 1000);
-  });
 
-  // Music controls
-  const musicBtn = document.getElementById('musicBtn');
-  const bgMusic = document.getElementById('bgMusic');
-  let isPlaying = false;
+      function drawTime(timeString) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  musicBtn.addEventListener('click', () => {
-    if (isPlaying) {
-      bgMusic.pause();
-      musicBtn.textContent = 'Play Music';
-    } else {
-      bgMusic.play();
-      musicBtn.textContent = 'Pause Music';
-    }
-    isPlaying = !isPlaying;
-  });
+        let totalWidth = 0;
+        for (const char of timeString) {
+          totalWidth += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
+        }
+        totalWidth -= PIXEL_SIZE;
 
-  // Draw default timer at 00:00 on load
-  drawTime('00:00');
-</script>
+        let startX = (canvas.width - totalWidth) / 2;
+        const startY = (canvas.height - DIGIT_HEIGHT * PIXEL_SIZE) / 2;
+
+        for (const char of timeString) {
+          drawDigit(char, startX, startY);
+          startX += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
+        }
+      }
+
+      function startTimer() {
+        if (isRunning) return;
+        
+        let secondsInput = parseInt(input.value, 10);
+        if (isNaN(secondsInput) || secondsInput <= 0) {
+            input.value = '';
+            input.placeholder = 'Please enter a number';
+            return;
+        }
+
+        totalSeconds = secondsInput;
+        timeLeft = totalSeconds * 1000;
+        isRunning = true;
+        
+        startPauseBtn.textContent = 'Pause';
+        input.disabled = true;
+
+        const startTime = Date.now();
+
+        countdownInterval = setInterval(() => {
+          const elapsedTime = Date.now() - startTime;
+          const remainingTime = timeLeft - elapsedTime;
+
+          if (remainingTime <= 0) {
+            clearInterval(countdownInterval);
+            isRunning = false;
+            startPauseBtn.textContent = 'Start';
+            input.disabled = false;
+            drawTime('00:00:00');
+            bgMusic.pause();
+            musicBtn.textContent = 'Play Music';
+            
+            // Optional: add a "timer finished" effect
+            setTimeout(() => drawTime('00:00:00'), 500);
+            return;
+          }
+
+          drawTime(formatTime(remainingTime));
+        }, 10);
+      }
+
+      function pauseTimer() {
+        clearInterval(countdownInterval);
+        isRunning = false;
+        startPauseBtn.textContent = 'Resume';
+      }
+
+      function resetTimer() {
+        clearInterval(countdownInterval);
+        isRunning = false;
+        startPauseBtn.textContent = 'Start';
+        input.disabled = false;
+        input.value = '';
+        drawTime('00:00:00');
+        bgMusic.pause();
+        musicBtn.textContent = 'Play Music';
+      }
+
+      // --- Event Listeners ---
+      startPauseBtn.addEventListener('click', () => {
+        if (isRunning) {
+          pauseTimer();
+        } else {
+          startTimer();
+        }
+      });
+
+      resetBtn.addEventListener('click', resetTimer);
+
+      musicBtn.addEventListener('click', () => {
+        if (bgMusic.paused) {
+          bgMusic.play();
+          musicBtn.textContent = 'Pause Music';
+        } else {
+          bgMusic.pause();
+          musicBtn.textContent = 'Play Music';
+        }
+      });
+
+      // --- Initialization ---
+      drawTime('00:00:00');
+    });
+  </script>
 </body>
 </html>
