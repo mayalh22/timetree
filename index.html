@@ -17,6 +17,12 @@
     --color-green-accent: #efbac0;
     --color-green-subtle: #17a623;
     --font-pixel: 'Press Start 2P', monospace;
+    .display-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
   }
 
   body {
@@ -103,6 +109,10 @@
 </head>
 <body>
   <h1>Time Tree</h1>
+  <div class="display-container">
+  <canvas id="timerCanvas" width="300" height="200"></canvas>
+  <canvas id="treeCanvas" width="100" height="200"></canvas>
+</div>
 
   <div class="controls">
     <input
@@ -137,6 +147,11 @@
       const musicBtn = document.getElementById('musicBtn');
       const input = document.getElementById('inputSeconds');
       const bgMusic = document.getElementById('bgMusic');
+const timerCanvas = document.getElementById('timerCanvas');
+const timerCtx = timerCanvas.getContext('2d');
+
+const treeCanvas = document.getElementById('treeCanvas');
+const treeCtx = treeCanvas.getContext('2d');
 
       const PIXEL_SIZE = 15;
       const FONT_COLOR = '#e0f8cf';
@@ -253,24 +268,25 @@
         ]
       };
 
-      function drawDigit(digit, x, y) {
-        const pattern = digits[digit];
-        if (!pattern) return;
+function drawDigit(ctx, digit, x, y) {
+  const pattern = digits[digit];
+  if (!pattern) return;
 
-        ctx.fillStyle = FONT_COLOR;
-        for (let row = 0; row < pattern.length; row++) {
-          for (let col = 0; col < pattern[row].length; col++) {
-            if (pattern[row][col] === 1) {
-              ctx.fillRect(
-                x + col * PIXEL_SIZE,
-                y + row * PIXEL_SIZE,
-                PIXEL_SIZE,
-                PIXEL_SIZE
-              );
-            }
-          }
-        }
+  ctx.fillStyle = FONT_COLOR;
+  for (let row = 0; row < pattern.length; row++) {
+    for (let col = 0; col < pattern[row].length; col++) {
+      if (pattern[row][col] === 1) {
+        ctx.fillRect(
+          x + col * PIXEL_SIZE,
+          y + row * PIXEL_SIZE,
+          PIXEL_SIZE,
+          PIXEL_SIZE
+        );
       }
+    }
+  }
+}
+
 
       function formatTime(ms) {
         const minutes = Math.floor(ms / 60000);
@@ -284,41 +300,42 @@
         return `${mStr}:${sStr}:${msStr}`;
       }
 
-      function drawTime(timeString) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+function drawTime(timeString) {
+  timerCtx.clearRect(0, 0, timerCanvas.width, timerCanvas.height);
 
-        let totalWidth = 0;
-        for (const char of timeString) {
-          totalWidth += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
-        }
-        totalWidth -= PIXEL_SIZE;
+  let totalWidth = 0;
+  for (const char of timeString) {
+    totalWidth += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
+  }
+  totalWidth -= PIXEL_SIZE;
 
-        let startX = (canvas.width - totalWidth) / 2;
-        const startY = (canvas.height - DIGIT_HEIGHT * PIXEL_SIZE) / 2;
+  let startX = (timerCanvas.width - totalWidth) / 2;
+  const startY = (timerCanvas.height - DIGIT_HEIGHT * PIXEL_SIZE) / 2;
 
-        for (const char of timeString) {
-          drawDigit(char, startX, startY);
-          startX += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
-        }
-        drawTree();
-      }
-      function drawTree() {
-  const trunkWidth = 10;
-  const padding = 20;
-  const trunkX = canvas.width - trunkWidth - padding;
-  const trunkY = canvas.height;
-
-  ctx.fillStyle = '#7b3f00';
-  ctx.fillRect(trunkX, trunkY - treeHeight, trunkWidth, treeHeight);
-
-  const leafRadius = Math.min(30, treeHeight / 4);
-  ctx.beginPath();
-  ctx.arc(trunkX + trunkWidth / 2, trunkY - treeHeight, leafRadius, 0, 2 * Math.PI);
-  ctx.fillStyle = '#228B22'; 
-  ctx.fill();
+  for (const char of timeString) {
+    drawDigit(timerCtx, char, startX, startY);
+    startX += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
+  }
 }
+function drawTree() {
+  const trunkWidth = 10;
+  const padding = 10;
+  const trunkX = treeCanvas.width / 2 - trunkWidth / 2;
+  const trunkY = treeCanvas.height;
 
+  treeCtx.clearRect(0, 0, treeCanvas.width, treeCanvas.height);
 
+  // Trunk
+  treeCtx.fillStyle = '#7b3f00';
+  treeCtx.fillRect(trunkX, trunkY - treeHeight, trunkWidth, treeHeight);
+
+  // Leaves
+  const leafRadius = Math.min(30, treeHeight / 4);
+  treeCtx.beginPath();
+  treeCtx.arc(trunkX + trunkWidth / 2, trunkY - treeHeight, leafRadius, 0, 2 * Math.PI);
+  treeCtx.fillStyle = '#228B22';
+  treeCtx.fill();
+}
       
 function startTimer() {
   if (isRunning) return;
