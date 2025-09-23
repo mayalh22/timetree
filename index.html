@@ -9,7 +9,7 @@
 <link
   href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
   rel="stylesheet"
-/>
+>
 <style>
   :root {
     --color-bg-dark: hsl(88, 83%, 80%);
@@ -149,6 +149,8 @@
       let isRunning = false;
       let timeLeft = 0;
       let totalSeconds;
+      let maxTreeHeight = canvas.height - 40;
+      let treeHeight = 0;
 
       const digits = {
         '0': [
@@ -300,8 +302,26 @@
           drawDigit(char, startX, startY);
           startX += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
         }
+        drawTree();
       }
+      function drawTree() {
+  const trunkWidth = 10;
+  const trunkX = canvas.width / 2 - trunkWidth / 2;
+  const trunkY = canvas.height;
 
+  // Draw trunk
+  ctx.fillStyle = '#7b3f00'; // brown
+  ctx.fillRect(trunkX, trunkY - treeHeight, trunkWidth, treeHeight);
+
+  // Draw simple leaves as a circle
+  const leafRadius = Math.min(30, treeHeight / 4);
+  ctx.beginPath();
+  ctx.arc(canvas.width / 2, trunkY - treeHeight, leafRadius, 0, 2 * Math.PI);
+  ctx.fillStyle = '#228B22'; // green
+  ctx.fill();
+}
+
+      
       function startTimer() {
         if (isRunning) return;
         
@@ -324,6 +344,28 @@
         countdownInterval = setInterval(() => {
           const elapsedTime = Date.now() - startTime;
           const remainingTime = timeLeft - elapsedTime;
+countdownInterval = setInterval(() => {
+  const elapsedTime = Date.now() - startTime;
+  const remainingTime = timeLeft - elapsedTime;
+
+  if (remainingTime <= 0) {
+    clearInterval(countdownInterval);
+    isRunning = false;
+    startPauseBtn.textContent = 'Start';
+    input.disabled = false;
+    treeHeight = maxTreeHeight;
+    drawTime('00:00:00');
+    bgMusic.pause();
+    musicBtn.textContent = 'Play Music';
+    return;
+  }
+
+  // Update tree growth based on elapsed time
+  const growthRatio = Math.min(1, elapsedTime / (totalSeconds * 1000));
+  treeHeight = growthRatio * maxTreeHeight;
+
+  drawTime(formatTime(remainingTime));
+}, 10);
 
           if (remainingTime <= 0) {
             clearInterval(countdownInterval);
@@ -387,3 +429,4 @@
   </script>
 </body>
 </html>
+ttertgdfcv
