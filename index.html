@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pixelated Timer</title>
+<style>
+  body {
+    background: #111;
+    color: #0f0;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+  }
+
+  input {
+    font-size: 2rem;
+    padding: 0.2em 0.5em;
+    width: 8ch;
+    text-align: center;
+    background: #222;
+    color: #0f0;
+    border: 2px solid #0f0;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    font-family: monospace;
+  }
+
+  #timer {
+    font-size: 6rem;
+    letter-spacing: 0.2ch;
+    font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
+    text-shadow:
+      0 0 2px #0f0,
+      0 0 5px #0f0,
+      0 0 10px #0f0,
+      0 0 20px #0f0;
+    user-select: none;
+  }
+
+  button {
+    font-size: 1.5rem;
+    padding: 0.3em 1em;
+    background: #0f0;
+    color: #111;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: monospace;
+  }
+
+  button:disabled {
+    background: #555;
+    cursor: not-allowed;
+  }
+</style>
+</head>
+<body>
+
+<input id="inputSeconds" type="number" min="1" placeholder="Seconds" />
+<button id="startBtn">Start</button>
+<div id="timer">00:00</div>
+
+<script>
+  const input = document.getElementById('inputSeconds');
+  const startBtn = document.getElementById('startBtn');
+  const timerDisplay = document.getElementById('timer');
+  let countdown;
+
+  function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+  }
+
+  startBtn.addEventListener('click', () => {
+    let timeLeft = parseInt(input.value, 10);
+    if (isNaN(timeLeft) || timeLeft < 1) return;
+
+    clearInterval(countdown);
+    timerDisplay.textContent = formatTime(timeLeft);
+
+    startBtn.disabled = true;
+    input.disabled = true;
+
+    countdown = setInterval(() => {
+      timeLeft--;
+      timerDisplay.textContent = formatTime(timeLeft);
+      if (timeLeft <= 0) {
+        clearInterval(countdown);
+        startBtn.disabled = false;
+        input.disabled = false;
+      }
+    }, 1000);
+  });
+</script>
+
+</body>
+</html>
