@@ -43,27 +43,26 @@
 
   h1 {
     font-size: 2rem;
-    text-shadow: 2px 2px var(--color-green-accent);
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
   }
 
   .controls {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
   }
 
   input,
   button {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     font-family: var(--font-pixel);
     background-color: var(--color-green-accent);
     color: var(--color-text-light);
     border: 2px solid var(--color-green-subtle);
-    padding: 0.6rem 1rem;
-    border-radius: 4px;
+    padding: 0.8rem 1.1rem;
+    border-radius: 6px;
     cursor: pointer;
     text-transform: uppercase;
     transition: background-color 0.2s, border-color 0.2s;
@@ -99,7 +98,25 @@
     background: var(--color-green-accent);
     margin-top: 1rem;
     border: 2px solid var(--color-green-subtle);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    /* shadows removed per request */
+    box-shadow: none;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .display-container {
+    width: 100%;
+    max-width: 900px;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+
+  /* stack on small screens */
+  @media (max-width: 600px) {
+    .display-container {
+      flex-direction: column;
+      gap: 1.75rem;
+    }
   }
 
   .music-tooltip {
@@ -141,31 +158,30 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const canvas = document.getElementById('timerCanvas');
-      const ctx = canvas.getContext('2d');
       const startPauseBtn = document.getElementById('startPauseBtn');
       const resetBtn = document.getElementById('resetBtn');
       const musicBtn = document.getElementById('musicBtn');
       const input = document.getElementById('inputSeconds');
       const bgMusic = document.getElementById('bgMusic');
-const timerCanvas = document.getElementById('timerCanvas');
-const timerCtx = timerCanvas.getContext('2d');
 
-const treeCanvas = document.getElementById('treeCanvas');
-const treeCtx = treeCanvas.getContext('2d');
+      const timerCanvas = document.getElementById('timerCanvas');
+      const timerCtx = timerCanvas.getContext('2d');
+      const treeCanvas = document.getElementById('treeCanvas');
+      const treeCtx = treeCanvas.getContext('2d');
 
-      const PIXEL_SIZE = 15;
+      let PIXEL_SIZE = 12;
       const FONT_COLOR = '#e0f8cf';
       const DIGIT_WIDTH = 5;
       const DIGIT_HEIGHT = 7;
-      const DIGIT_SPACING = 2;
-      
+
       let countdownInterval;
       let isRunning = false;
       let timeLeft = 0;
-      let totalSeconds;
-      let maxTreeHeight = canvas.height - 40;
+      let totalSeconds = 0;
+      let maxTreeHeight = 0;
       let treeHeight = 0;
+      let pausedTime = 0;
+      let startTime = 0;
 
       const digits = {
         '0': [
@@ -269,31 +285,31 @@ const treeCtx = treeCanvas.getContext('2d');
         ]
       };
 
-function drawDigit(ctx, digit, x, y) {
-  const pattern = digits[digit];
-  if (!pattern) return;
+ 
+      function drawDigit(ctx, digit, x, y) {
+        const pattern = digits[digit];
+        if (!pattern) return;
 
-  ctx.fillStyle = FONT_COLOR;
-  for (let row = 0; row < pattern.length; row++) {
-    for (let col = 0; col < pattern[row].length; col++) {
-      if (pattern[row][col] === 1) {
-        ctx.fillRect(
-          x + col * PIXEL_SIZE,
-          y + row * PIXEL_SIZE,
-          PIXEL_SIZE,
-          PIXEL_SIZE
-        );
+        ctx.fillStyle = FONT_COLOR;
+        for (let row = 0; row < pattern.length; row++) {
+          for (let col = 0; col < pattern[row].length; col++) {
+            if (pattern[row][col] === 1) {
+              ctx.fillRect(
+                x + col * PIXEL_SIZE,
+                y + row * PIXEL_SIZE,
+                PIXEL_SIZE,
+                PIXEL_SIZE
+              );
+            }
+          }
+        }
       }
-    }
-  }
-}
-
 
       function formatTime(ms) {
         const minutes = Math.floor(ms / 60000);
         const seconds = Math.floor((ms % 60000) / 1000);
         const milliseconds = Math.floor((ms % 1000) / 10);
-        
+
         const mStr = String(minutes).padStart(2, '0');
         const sStr = String(seconds).padStart(2, '0');
         const msStr = String(milliseconds).padStart(2, '0');
@@ -301,99 +317,102 @@ function drawDigit(ctx, digit, x, y) {
         return `${mStr}:${sStr}:${msStr}`;
       }
 
-function drawTime(timeString) {
-  timerCtx.clearRect(0, 0, timerCanvas.width, timerCanvas.height);
+      function drawTime(timeString) {
+        const cw = timerCanvas.clientWidth;
+        const ch = timerCanvas.clientHeight;
+        timerCtx.clearRect(0, 0, cw, ch);
 
-  let totalWidth = 0;
-  for (const char of timeString) {
-    totalWidth += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
-  }
-  totalWidth -= PIXEL_SIZE;
+        let totalWidth = 0;
+        for (const char of timeString) {
+          totalWidth += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
+        }
+        totalWidth -= PIXEL_SIZE;
 
-  let startX = (timerCanvas.width - totalWidth) / 2;
-  const startY = (timerCanvas.height - DIGIT_HEIGHT * PIXEL_SIZE) / 2;
+        let startX = (cw - totalWidth) / 2;
+        const startY = (ch - DIGIT_HEIGHT * PIXEL_SIZE) / 2;
 
-  for (const char of timeString) {
-    drawDigit(timerCtx, char, startX, startY);
-    startX += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
-  }
-}
-function drawTree() {
-  const trunkWidth = 10;
-  const padding = 10;
-  const trunkX = treeCanvas.width / 2 - trunkWidth / 2;
-  const trunkY = treeCanvas.height;
+        for (const char of timeString) {
+          drawDigit(timerCtx, char, startX, startY);
+          startX += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
+        }
+      }
 
-  treeCtx.clearRect(0, 0, treeCanvas.width, treeCanvas.height);
+      function drawTree() {
+        const cw = treeCanvas.clientWidth;
+        const ch = treeCanvas.clientHeight;
+        const trunkWidth = Math.max(6, Math.floor(cw * 0.12));
+        const trunkX = Math.floor(cw / 2 - trunkWidth / 2);
+        const trunkY = ch;
 
-  treeCtx.fillStyle = '#7b3f00';
-  treeCtx.fillRect(trunkX, trunkY - treeHeight, trunkWidth, treeHeight);
+        treeCtx.clearRect(0, 0, cw, ch);
 
-  const leafRadius = Math.min(30, treeHeight / 4);
-  treeCtx.beginPath();
-  treeCtx.arc(trunkX + trunkWidth / 2, trunkY - treeHeight, leafRadius, 0, 2 * Math.PI);
-  treeCtx.fillStyle = '#228B22';
-  treeCtx.fill();
-}
-let pausedTime = 0;
-let startTime = 0;
+        treeCtx.fillStyle = '#7b3f00';
+        treeCtx.fillRect(trunkX, trunkY - treeHeight, trunkWidth, treeHeight);
 
-function pauseTimer() {
-  if (!isRunning) return;
+        const leafRadius = Math.min(cw * 0.4, treeHeight / 4);
+        treeCtx.beginPath();
+        treeCtx.arc(trunkX + trunkWidth / 2, trunkY - treeHeight, leafRadius, 0, 2 * Math.PI);
+        treeCtx.fillStyle = '#228B22';
+        treeCtx.fill();
+      }
 
-  clearInterval(countdownInterval);
-  isRunning = false;
-  startPauseBtn.textContent = 'Start';
+      function pauseTimer() {
+        if (!isRunning) return;
 
-  pausedTime += Date.now() - startTime;
-}
+        clearInterval(countdownInterval);
+        isRunning = false;
+        startPauseBtn.textContent = 'Start';
 
-function startTimer() {
+        pausedTime += Date.now() - startTime;
+      }
 
-  if (isRunning) return;
+      function startTimer() {
+        if (isRunning) return;
 
-  if (timeLeft <= 0) {
-    let secondsInput = parseInt(input.value, 10);
-    if (isNaN(secondsInput) || secondsInput <= 0) {
-      input.value = '';
-      input.placeholder = 'Please enter a number';
-      return;
-    }
-    totalSeconds = secondsInput;
-    timeLeft = totalSeconds * 1000;
-    pausedTime = 0;
-    input.disabled = true;
-  }
+        if (timeLeft <= 0) {
+          let secondsInput = parseInt(input.value, 10);
+          if (isNaN(secondsInput) || secondsInput <= 0) {
+            input.value = '';
+            input.placeholder = 'Please enter a number';
+            return;
+          }
+          totalSeconds = secondsInput;
+          timeLeft = totalSeconds * 1000;
+          pausedTime = 0;
+          input.disabled = true;
+        }
 
-  isRunning = true;
-  startPauseBtn.textContent = 'Pause';
-  startTime = Date.now();
+        isRunning = true;
+        startPauseBtn.textContent = 'Pause';
+        startTime = Date.now();
 
-  countdownInterval = setInterval(() => {
-    const elapsedTime = Date.now() - startTime + pausedTime;
-    const remainingTime = timeLeft - elapsedTime;
+        countdownInterval = setInterval(() => {
+          const elapsedTime = Date.now() - startTime + pausedTime;
+          const remainingTime = timeLeft - elapsedTime;
 
-    if (remainingTime <= 0) {
-      clearInterval(countdownInterval);
-      isRunning = false;
-      startPauseBtn.textContent = 'Start';
-      input.disabled = false;
-      treeHeight = maxTreeHeight;
-      drawTime('00:00:00');
-      drawTree();
-      bgMusic.pause();
-      musicBtn.textContent = 'Play Music';
-      timeLeft = 0;
-      pausedTime = 0;
-      return;
-    }
+          if (remainingTime <= 0) {
+            clearInterval(countdownInterval);
+            isRunning = false;
+            startPauseBtn.textContent = 'Start';
+            input.disabled = false;
+            treeHeight = maxTreeHeight;
+            drawTime('00:00:00');
+            drawTree();
+            try { bgMusic.pause(); } catch (e) {}
+            musicBtn.textContent = 'Play Music';
+            timeLeft = 0;
+            pausedTime = 0;
+            return;
+          }
 
-    const growthRatio = Math.min(1, elapsedTime / (totalSeconds * 1000));
-    treeHeight = growthRatio * maxTreeHeight;
+          const growthRatio = Math.min(1, elapsedTime / (totalSeconds * 1000));
+          treeHeight = growthRatio * maxTreeHeight;
 
-    drawTime(formatTime(remainingTime));
-    drawTree();
-  }, 10);
+          drawTime(formatTime(remainingTime));
+          drawTree();
+        }, 50);
+      }
+
       function resetTimer() {
         clearInterval(countdownInterval);
         isRunning = false;
@@ -406,9 +425,8 @@ function startTimer() {
         pausedTime = 0;
         drawTime('00:00:00');
         drawTree();
-        bgMusic.pause();
+        try { bgMusic.pause(); } catch (e) {}
         musicBtn.textContent = 'Play Music';
-
       }
 
       startPauseBtn.addEventListener('click', () => {
@@ -423,17 +441,72 @@ function startTimer() {
 
       musicBtn.addEventListener('click', () => {
         if (bgMusic.paused) {
-          bgMusic.play();
-          musicBtn.textContent = 'Pause Music';
+          const playPromise = bgMusic.play();
+          if (playPromise && typeof playPromise.then === 'function') {
+            playPromise.then(() => {
+              musicBtn.textContent = 'Pause Music';
+            }).catch((err) => {
+              console.warn('Music play failed:', err);
+              musicBtn.textContent = 'Play Music';
+            });
+          } else {
+            musicBtn.textContent = 'Pause Music';
+          }
         } else {
           bgMusic.pause();
           musicBtn.textContent = 'Play Music';
         }
       });
 
+      // Resize handling: scale canvases for DPR and compute PIXEL_SIZE
+      function resizeCanvases() {
+        const dpr = window.devicePixelRatio || 1;
+
+        const tRect = timerCanvas.getBoundingClientRect();
+        const trRect = treeCanvas.getBoundingClientRect();
+
+        // set backing store size
+        timerCanvas.width = Math.max(200, Math.floor(tRect.width * dpr));
+        timerCanvas.height = Math.max(100, Math.floor(Math.max(tRect.height, tRect.width * 0.35) * dpr));
+        timerCanvas.style.height = (timerCanvas.height / dpr) + 'px';
+
+        treeCanvas.width = Math.max(100, Math.floor(trRect.width * dpr));
+        treeCanvas.height = Math.max(100, Math.floor(Math.max(trRect.height, trRect.width * 1.6) * dpr));
+        treeCanvas.style.height = (treeCanvas.height / dpr) + 'px';
+
+        // contexts: scale so drawing uses CSS pixels
+        timerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        treeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // compute pixel size so digits scale to available width
+        const desiredWidth = timerCanvas.clientWidth * 0.9;
+        const chars = 8; // MM:SS:MS
+        PIXEL_SIZE = Math.max(4, Math.floor(desiredWidth / (chars * DIGIT_WIDTH)));
+
+        maxTreeHeight = treeCanvas.clientHeight - 30;
+
+        // redraw
+        const currentRemaining = timeLeft > 0 ? Math.max(0, timeLeft - (isRunning ? (Date.now() - startTime + pausedTime) : 0)) : 0;
+        drawTime(formatTime(currentRemaining));
+        drawTree();
+      }
+
+      window.addEventListener('resize', resizeCanvases);
+      // initial layout tweaks via CSS flex: ensure canvases can grow
+      timerCanvas.style.width = '';
+      treeCanvas.style.width = '';
+
+      // Add minimal CSS hooks for flexible canvas sizing
+      const style = document.createElement('style');
+      style.textContent = '#timerCanvas{flex:3;min-width:220px;} #treeCanvas{flex:1;min-width:90px;} .display-container{gap:2rem;}';
+      document.head.appendChild(style);
+
+      // initial draw
       treeHeight = 0;
       drawTime('00:00:00');
 
+      // run resize once to initialize sizes and scale
+      setTimeout(resizeCanvases, 50);
     });
   </script>
 </body>
