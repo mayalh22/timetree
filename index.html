@@ -119,11 +119,7 @@
     }
   }
 
-  .music-tooltip {
-    font-size: 0.6rem;
-    color: var(--color-green-subtle);
-    margin-top: 0.5rem;
-  }
+  /* music tooltip removed */
 </style>
 </head>
 <body>
@@ -147,22 +143,14 @@
     </div>
   </div>
 
-  <button id="musicBtn" aria-label="Toggle background music">Play Music</button>
-  <audio id="bgMusic" loop>
-    <source
-      src="https://cdn.pixabay.com/download/audio/2022/03/03/audio_2d59e2f48f.mp3?filename=relaxing-music-ambient-3781.mp3"
-      type="audio/mpeg"
-    />
-  </audio>
+  <!-- music option removed -->
 
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const startPauseBtn = document.getElementById('startPauseBtn');
-      const resetBtn = document.getElementById('resetBtn');
-      const musicBtn = document.getElementById('musicBtn');
-      const input = document.getElementById('inputSeconds');
-      const bgMusic = document.getElementById('bgMusic');
+  const startPauseBtn = document.getElementById('startPauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const input = document.getElementById('inputSeconds');
 
       const timerCanvas = document.getElementById('timerCanvas');
       const timerCtx = timerCanvas.getContext('2d');
@@ -398,8 +386,7 @@
             treeHeight = maxTreeHeight;
             drawTime('00:00:00');
             drawTree();
-            try { bgMusic.pause(); } catch (e) {}
-            musicBtn.textContent = 'Play Music';
+            // music removed
             timeLeft = 0;
             pausedTime = 0;
             return;
@@ -425,8 +412,7 @@
         pausedTime = 0;
         drawTime('00:00:00');
         drawTree();
-        try { bgMusic.pause(); } catch (e) {}
-        musicBtn.textContent = 'Play Music';
+  // music removed
       }
 
       startPauseBtn.addEventListener('click', () => {
@@ -439,24 +425,7 @@
 
       resetBtn.addEventListener('click', resetTimer);
 
-      musicBtn.addEventListener('click', () => {
-        if (bgMusic.paused) {
-          const playPromise = bgMusic.play();
-          if (playPromise && typeof playPromise.then === 'function') {
-            playPromise.then(() => {
-              musicBtn.textContent = 'Pause Music';
-            }).catch((err) => {
-              console.warn('Music play failed:', err);
-              musicBtn.textContent = 'Play Music';
-            });
-          } else {
-            musicBtn.textContent = 'Pause Music';
-          }
-        } else {
-          bgMusic.pause();
-          musicBtn.textContent = 'Play Music';
-        }
-      });
+  // music feature removed
 
       // Resize handling: scale canvases for DPR and compute PIXEL_SIZE
       function resizeCanvases() {
@@ -483,7 +452,7 @@
         const chars = 8; // MM:SS:MS
         PIXEL_SIZE = Math.max(4, Math.floor(desiredWidth / (chars * DIGIT_WIDTH)));
 
-        maxTreeHeight = treeCanvas.clientHeight - 30;
+        maxTreeHeight = treeCanvas.clientHeight - 50;
 
         // redraw
         const currentRemaining = timeLeft > 0 ? Math.max(0, timeLeft - (isRunning ? (Date.now() - startTime + pausedTime) : 0)) : 0;
