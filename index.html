@@ -5,7 +5,7 @@
 <title>Pixelated Timer</title>
 <style>
   body {
-      background: white;
+      background: #004d00; /* dark green background */
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -13,37 +13,60 @@
       height: 100vh;
       margin: 0;
       font-family: monospace;
+      color: #004d00; /* just to avoid default black text on dark bg */
   }
 
   input, button {
-      font-size: 1.5rem;
-      margin: 0.5rem;
-      padding: 0.3rem 0.6rem;
-      font-family: monospace;
+    font-size: 1.5rem;
+    margin: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    font-family: monospace;
+    background-color: #004d00; /* dark green */
+    color: #a0d080; /* light green text */
+    border: 2px solid #002800;
+    border-radius: 4px;
+    outline: none;
+    width: 140px;
+    text-align: center;
+    cursor: pointer;
   }
-    canvas {
-      image-rendering: pixelated; /* makes canvas sharp for pixel art */
-      background: white;
-      margin-top: 1rem;
-    }
-  </style>
+
+  input::placeholder {
+      color: #a0d080;
+  }
+
+  input:focus, button:focus {
+      border-color: #80b080;
+      box-shadow: 0 0 5px #80b080;
+  }
+
+  canvas {
+    image-rendering: pixelated;
+    background: #a0d080; /* lighter green background for canvas */
+    margin-top: 1rem;
+    border: 2px solid #002800;
+  }
+</style>
 </head>
 <body>
+
   <input id="inputSeconds" type="number" min="1" placeholder="Seconds" />
   <button id="startBtn">Start</button>
+
+  <button id="musicBtn">Play Music</button>
+  <audio id="bgMusic" loop>
+    <source src="https://cdn.pixabay.com/download/audio/2022/03/03/audio_2d59e2f48f.mp3?filename=relaxing-music-ambient-3781.mp3" type="audio/mpeg" />
+  </audio>
+
   <canvas id="timerCanvas" width="400" height="100"></canvas>
+
 <script>
   const canvas = document.getElementById('timerCanvas');
   const ctx = canvas.getContext('2d');
   const startBtn = document.getElementById('startBtn');
   const input = document.getElementById('inputSeconds');
 
-  // Size of each pixel block
   const PIXEL_SIZE = 10;
-
-  // Digit patterns (5x7 grid of pixels for each digit 0-9)
-  // 1 = filled pixel, 0 = empty
-  // We’ll use 5 columns and 7 rows per digit
   const digits = {
     '0': [
       [1,1,1,1,1],
@@ -146,7 +169,6 @@
     ],
   };
 
-  // Draw a single digit at (x,y)
   function drawDigit(digit, x, y) {
     const pattern = digits[digit];
     if (!pattern) return;
@@ -159,26 +181,22 @@
     }
   }
 
-  // Format seconds as MM:SS string
   function formatTime(seconds) {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
   }
 
-  // Draw entire time string centered horizontally
   function drawTime(str) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'black';
-    const totalDigits = str.length;
-    const digitWidth = 5 * PIXEL_SIZE; // 5 pixels wide per digit
-    const colonWidth = PIXEL_SIZE; // colon is 1 pixel wide pattern
-    // calculate total width
+    ctx.fillStyle = '#004d00'; // dark green text color
+    const digitWidth = 5 * PIXEL_SIZE;
+    const colonWidth = PIXEL_SIZE;
     let width = 0;
     for (let ch of str) {
-      width += (ch === ':' ? colonWidth : digitWidth) + PIXEL_SIZE; // add PIXEL_SIZE spacing between digits
+      width += (ch === ':' ? colonWidth : digitWidth) + PIXEL_SIZE;
     }
-    width -= PIXEL_SIZE; // no spacing after last digit
+    width -= PIXEL_SIZE;
 
     let startX = (canvas.width - width) / 2;
     const startY = (canvas.height - 7 * PIXEL_SIZE) / 2;
@@ -210,6 +228,22 @@
         input.disabled = false;
       }
     }, 1000);
+  });
+
+  // Music controls
+  const musicBtn = document.getElementById('musicBtn');
+  const bgMusic = document.getElementById('bgMusic');
+  let isPlaying = false;
+
+  musicBtn.addEventListener('click', () => {
+    if (isPlaying) {
+      bgMusic.pause();
+      musicBtn.textContent = 'Play Music';
+    } else {
+      bgMusic.play();
+      musicBtn.textContent = 'Pause Music';
+    }
+    isPlaying = !isPlaying;
   });
 
   // Draw default timer at 00:00 on load
