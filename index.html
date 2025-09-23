@@ -130,7 +130,6 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // --- DOM Elements & Constants ---
       const canvas = document.getElementById('timerCanvas');
       const ctx = canvas.getContext('2d');
       const startPauseBtn = document.getElementById('startPauseBtn');
@@ -254,7 +253,6 @@
         ]
       };
 
-      // --- Timer Logic Functions ---
       function drawDigit(digit, x, y) {
         const pattern = digits[digit];
         if (!pattern) return;
@@ -309,83 +307,57 @@
   const trunkX = canvas.width / 2 - trunkWidth / 2;
   const trunkY = canvas.height;
 
-  // Draw trunk
-  ctx.fillStyle = '#7b3f00'; // brown
+  ctx.fillStyle = '#7b3f00';
   ctx.fillRect(trunkX, trunkY - treeHeight, trunkWidth, treeHeight);
 
-  // Draw simple leaves as a circle
   const leafRadius = Math.min(30, treeHeight / 4);
   ctx.beginPath();
   ctx.arc(canvas.width / 2, trunkY - treeHeight, leafRadius, 0, 2 * Math.PI);
-  ctx.fillStyle = '#228B22'; // green
+  ctx.fillStyle = '#228B22';
   ctx.fill();
 }
 
       
-      function startTimer() {
-        if (isRunning) return;
-        
-        let secondsInput = parseInt(input.value, 10);
-        if (isNaN(secondsInput) || secondsInput <= 0) {
-            input.value = '';
-            input.placeholder = 'Please enter a number';
-            return;
-        }
+function startTimer() {
+  if (isRunning) return;
 
-        totalSeconds = secondsInput;
-        timeLeft = totalSeconds * 1000;
-        isRunning = true;
-        
-        startPauseBtn.textContent = 'Pause';
-        input.disabled = true;
-
-        const startTime = Date.now();
-
-        countdownInterval = setInterval(() => {
-          const elapsedTime = Date.now() - startTime;
-          const remainingTime = timeLeft - elapsedTime;
-countdownInterval = setInterval(() => {
-  const elapsedTime = Date.now() - startTime;
-  const remainingTime = timeLeft - elapsedTime;
-
-  if (remainingTime <= 0) {
-    clearInterval(countdownInterval);
-    isRunning = false;
-    startPauseBtn.textContent = 'Start';
-    input.disabled = false;
-    treeHeight = maxTreeHeight;
-    drawTime('00:00:00');
-    bgMusic.pause();
-    musicBtn.textContent = 'Play Music';
+  let secondsInput = parseInt(input.value, 10);
+  if (isNaN(secondsInput) || secondsInput <= 0) {
+    input.value = '';
+    input.placeholder = 'Please enter a number';
     return;
   }
 
-  // Update tree growth based on elapsed time
-  const growthRatio = Math.min(1, elapsedTime / (totalSeconds * 1000));
-  treeHeight = growthRatio * maxTreeHeight;
+  totalSeconds = secondsInput;
+  timeLeft = totalSeconds * 1000;
+  isRunning = true;
+  startPauseBtn.textContent = 'Pause';
+  input.disabled = true;
 
-  drawTime(formatTime(remainingTime));
-}, 10);
+  const startTime = Date.now();
 
-          if (remainingTime <= 0) {
-            clearInterval(countdownInterval);
-            isRunning = false;
-            startPauseBtn.textContent = 'Start';
-            input.disabled = false;
-            drawTime('00:00:00');
-            bgMusic.pause();
-            musicBtn.textContent = 'Play Music';
-            
-            // Optional: add a "timer finished" effect
-            setTimeout(() => drawTime('00:00:00'), 500);
-            return;
-          }
+  countdownInterval = setInterval(() => {
+    const elapsedTime = Date.now() - startTime;
+    const remainingTime = timeLeft - elapsedTime;
 
-          drawTime(formatTime(remainingTime));
-        }, 10);
-      }
+    if (remainingTime <= 0) {
+      clearInterval(countdownInterval);
+      isRunning = false;
+      startPauseBtn.textContent = 'Start';
+      input.disabled = false;
+      treeHeight = maxTreeHeight;
+      drawTime('00:00:00');
+      bgMusic.pause();
+      musicBtn.textContent = 'Play Music';
+      return;
+    }
 
-      function pauseTimer() {
+    const growthRatio = Math.min(1, elapsedTime / (totalSeconds * 1000));
+    treeHeight = growthRatio * maxTreeHeight;
+
+    drawTime(formatTime(remainingTime));
+  }, 10);
+}      function pauseTimer() {
         clearInterval(countdownInterval);
         isRunning = false;
         startPauseBtn.textContent = 'Resume';
@@ -397,12 +369,12 @@ countdownInterval = setInterval(() => {
         startPauseBtn.textContent = 'Start';
         input.disabled = false;
         input.value = '';
+        treeHeight = 0;
         drawTime('00:00:00');
         bgMusic.pause();
         musicBtn.textContent = 'Play Music';
       }
 
-      // --- Event Listeners ---
       startPauseBtn.addEventListener('click', () => {
         if (isRunning) {
           pauseTimer();
@@ -423,8 +395,9 @@ countdownInterval = setInterval(() => {
         }
       });
 
-      // --- Initialization ---
+      treeHeight = 0;
       drawTime('00:00:00');
+
     });
   </script>
 </body>
