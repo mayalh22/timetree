@@ -18,15 +18,12 @@
   --color-green-subtle: #17a623;
   --font-pixel: 'Press Start 2P', monospace;
 }
-
 .display-container {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 2rem;
 }
-
-
   body {
     background: var(--color-bg-dark);
     display: flex;
@@ -40,12 +37,10 @@
     padding: 1rem;
     box-sizing: border-box;
   }
-
   h1 {
     font-size: 2rem;
     margin-bottom: 2.5rem;
   }
-
   .controls {
     display: flex;
     flex-direction: column;
@@ -53,7 +48,6 @@
     gap: 1.25rem;
     margin-bottom: 2.5rem;
   }
-
   input,
   button {
     font-size: 0.9rem;
@@ -68,18 +62,15 @@
     transition: background-color 0.2s, border-color 0.2s;
     outline: none;
   }
-
   input {
     text-align: center;
     max-width: 150px;
     background-color: transparent;
   }
-
   input::placeholder {
     color: var(--color-green-subtle);
     opacity: 0.8;
   }
-
   input:focus,
   button:hover,
   button:focus {
@@ -87,12 +78,10 @@
     border-color: var(--color-text-light);
     color: var(--color-bg-dark);
   }
-
   button:disabled {
     cursor: not-allowed;
     opacity: 0.6;
   }
-
   canvas {
     image-rendering: pixelated;
     background: var(--color-green-accent);
@@ -103,21 +92,18 @@
     max-width: 100%;
     height: auto;
   }
-
   .display-container {
     width: 100%;
     max-width: 900px;
     padding: 1rem;
     box-sizing: border-box;
   }
-
   @media (max-width: 600px) {
     .display-container {
       flex-direction: column;
       gap: 1.75rem;
     }
   }
-
 </style>
 </head>
 <body>
@@ -126,7 +112,6 @@
   <canvas id="timerCanvas" width="300" height="200"></canvas>
   <canvas id="treeCanvas" width="100" height="200"></canvas>
 </div>
-
   <div class="controls">
     <input
       id="inputSeconds"
@@ -140,25 +125,19 @@
       <button id="resetBtn" aria-label="Reset Timer">Reset</button>
     </div>
   </div>
-
-
-
   <script>
     document.addEventListener('DOMContentLoaded', () => {
   const startPauseBtn = document.getElementById('startPauseBtn');
   const resetBtn = document.getElementById('resetBtn');
   const input = document.getElementById('inputSeconds');
-
       const timerCanvas = document.getElementById('timerCanvas');
       const timerCtx = timerCanvas.getContext('2d');
       const treeCanvas = document.getElementById('treeCanvas');
       const treeCtx = treeCanvas.getContext('2d');
-
       let PIXEL_SIZE = 12;
       const FONT_COLOR = '#e0f8cf';
       const DIGIT_WIDTH = 5;
       const DIGIT_HEIGHT = 7;
-
       let countdownInterval;
       let isRunning = false;
       let timeLeft = 0;
@@ -167,7 +146,6 @@
       let treeHeight = 0;
       let pausedTime = 0;
       let startTime = 0;
-
       const digits = {
         '0': [
           [0,1,1,1,0],
@@ -269,12 +247,9 @@
           [0,0]
         ]
       };
-
- 
       function drawDigit(ctx, digit, x, y) {
         const pattern = digits[digit];
         if (!pattern) return;
-
         ctx.fillStyle = FONT_COLOR;
         for (let row = 0; row < pattern.length; row++) {
           for (let col = 0; col < pattern[row].length; col++) {
@@ -289,71 +264,55 @@
           }
         }
       }
-
       function formatTime(ms) {
         const minutes = Math.floor(ms / 60000);
         const seconds = Math.floor((ms % 60000) / 1000);
         const milliseconds = Math.floor((ms % 1000) / 10);
-
         const mStr = String(minutes).padStart(2, '0');
         const sStr = String(seconds).padStart(2, '0');
         const msStr = String(milliseconds).padStart(2, '0');
-
         return `${mStr}:${sStr}:${msStr}`;
       }
-
       function drawTime(timeString) {
         const cw = timerCanvas.clientWidth;
         const ch = timerCanvas.clientHeight;
         timerCtx.clearRect(0, 0, cw, ch);
-
         let totalWidth = 0;
         for (const char of timeString) {
           totalWidth += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
         }
         totalWidth -= PIXEL_SIZE;
-
         let startX = (cw - totalWidth) / 2;
         const startY = (ch - DIGIT_HEIGHT * PIXEL_SIZE) / 2;
-
         for (const char of timeString) {
           drawDigit(timerCtx, char, startX, startY);
           startX += (char === ':' ? PIXEL_SIZE : DIGIT_WIDTH * PIXEL_SIZE) + PIXEL_SIZE;
         }
       }
-
       function drawTree() {
         const cw = treeCanvas.clientWidth;
         const ch = treeCanvas.clientHeight;
         const trunkWidth = Math.max(6, Math.floor(cw * 0.12));
         const trunkX = Math.floor(cw / 2 - trunkWidth / 2);
         const trunkY = ch;
-
         treeCtx.clearRect(0, 0, cw, ch);
-
         treeCtx.fillStyle = '#7b3f00';
         treeCtx.fillRect(trunkX, trunkY - treeHeight, trunkWidth, treeHeight);
-
         const leafRadius = Math.min(cw * 0.4, treeHeight / 4);
         treeCtx.beginPath();
         treeCtx.arc(trunkX + trunkWidth / 2, trunkY - treeHeight, leafRadius, 0, 2 * Math.PI);
         treeCtx.fillStyle = '#228B22';
         treeCtx.fill();
       }
-
       function pauseTimer() {
         if (!isRunning) return;
-
         clearInterval(countdownInterval);
         isRunning = false;
         startPauseBtn.textContent = 'Start';
-
         pausedTime += Date.now() - startTime;
       }
-
       function startTimer() {
         if (isRunning) return;
-
         if (timeLeft <= 0) {
           let secondsInput = parseInt(input.value, 10);
           if (isNaN(secondsInput) || secondsInput <= 0) {
@@ -366,15 +325,12 @@
           pausedTime = 0;
           input.disabled = true;
         }
-
         isRunning = true;
         startPauseBtn.textContent = 'Pause';
         startTime = Date.now();
-
         countdownInterval = setInterval(() => {
           const elapsedTime = Date.now() - startTime + pausedTime;
           const remainingTime = timeLeft - elapsedTime;
-
           if (remainingTime <= 0) {
             clearInterval(countdownInterval);
             isRunning = false;
@@ -387,15 +343,12 @@
             pausedTime = 0;
             return;
           }
-
           const growthRatio = Math.min(1, elapsedTime / (totalSeconds * 1000));
           treeHeight = growthRatio * maxTreeHeight;
-
           drawTime(formatTime(remainingTime));
           drawTree();
         }, 50);
       }
-
       function resetTimer() {
         clearInterval(countdownInterval);
         isRunning = false;
@@ -409,7 +362,6 @@
         drawTime('00:00:00');
         drawTree();
       }
-
       startPauseBtn.addEventListener('click', () => {
         if (isRunning) {
           pauseTimer();
@@ -417,48 +369,35 @@
           startTimer();
         }
       });
-
       resetBtn.addEventListener('click', resetTimer);
-
       function resizeCanvases() {
         const dpr = window.devicePixelRatio || 1;
-
         const tRect = timerCanvas.getBoundingClientRect();
         const trRect = treeCanvas.getBoundingClientRect();
-
         timerCanvas.width = Math.max(200, Math.floor(tRect.width * dpr));
         timerCanvas.height = Math.max(100, Math.floor(Math.max(tRect.height, tRect.width * 0.35) * dpr));
         timerCanvas.style.height = (timerCanvas.height / dpr) + 'px';
-
         treeCanvas.width = Math.max(100, Math.floor(trRect.width * dpr));
         treeCanvas.height = Math.max(100, Math.floor(Math.max(trRect.height, trRect.width * 1.6) * dpr));
         treeCanvas.style.height = (treeCanvas.height / dpr) + 'px';
-
         timerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
         treeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
         const desiredWidth = timerCanvas.clientWidth * 0.9;
         const chars = 8;
         PIXEL_SIZE = Math.max(4, Math.floor(desiredWidth / (chars * DIGIT_WIDTH)));
-
         maxTreeHeight = treeCanvas.clientHeight - 50;
-
         const currentRemaining = timeLeft > 0 ? Math.max(0, timeLeft - (isRunning ? (Date.now() - startTime + pausedTime) : 0)) : 0;
         drawTime(formatTime(currentRemaining));
         drawTree();
       }
-
       window.addEventListener('resize', resizeCanvases);
       timerCanvas.style.width = '';
       treeCanvas.style.width = '';
-
       const style = document.createElement('style');
       style.textContent = '#timerCanvas{flex:3;min-width:220px;} #treeCanvas{flex:1;min-width:90px;} .display-container{gap:2rem;}';
       document.head.appendChild(style);
-
       treeHeight = 0;
       drawTime('00:00:00');
-
       setTimeout(resizeCanvases, 50);
     });
   </script>
