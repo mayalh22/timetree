@@ -386,7 +386,6 @@
             treeHeight = maxTreeHeight;
             drawTime('00:00:00');
             drawTree();
-            // music removed
             timeLeft = 0;
             pausedTime = 0;
             return;
@@ -412,7 +411,6 @@
         pausedTime = 0;
         drawTime('00:00:00');
         drawTree();
-  // music removed
       }
 
       startPauseBtn.addEventListener('click', () => {
@@ -425,16 +423,12 @@
 
       resetBtn.addEventListener('click', resetTimer);
 
-  // music feature removed
-
-      // Resize handling: scale canvases for DPR and compute PIXEL_SIZE
       function resizeCanvases() {
         const dpr = window.devicePixelRatio || 1;
 
         const tRect = timerCanvas.getBoundingClientRect();
         const trRect = treeCanvas.getBoundingClientRect();
 
-        // set backing store size
         timerCanvas.width = Math.max(200, Math.floor(tRect.width * dpr));
         timerCanvas.height = Math.max(100, Math.floor(Math.max(tRect.height, tRect.width * 0.35) * dpr));
         timerCanvas.style.height = (timerCanvas.height / dpr) + 'px';
@@ -443,38 +437,31 @@
         treeCanvas.height = Math.max(100, Math.floor(Math.max(trRect.height, trRect.width * 1.6) * dpr));
         treeCanvas.style.height = (treeCanvas.height / dpr) + 'px';
 
-        // contexts: scale so drawing uses CSS pixels
         timerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
         treeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        // compute pixel size so digits scale to available width
         const desiredWidth = timerCanvas.clientWidth * 0.9;
-        const chars = 8; // MM:SS:MS
+        const chars = 8;
         PIXEL_SIZE = Math.max(4, Math.floor(desiredWidth / (chars * DIGIT_WIDTH)));
 
         maxTreeHeight = treeCanvas.clientHeight - 50;
 
-        // redraw
         const currentRemaining = timeLeft > 0 ? Math.max(0, timeLeft - (isRunning ? (Date.now() - startTime + pausedTime) : 0)) : 0;
         drawTime(formatTime(currentRemaining));
         drawTree();
       }
 
       window.addEventListener('resize', resizeCanvases);
-      // initial layout tweaks via CSS flex: ensure canvases can grow
       timerCanvas.style.width = '';
       treeCanvas.style.width = '';
 
-      // Add minimal CSS hooks for flexible canvas sizing
       const style = document.createElement('style');
       style.textContent = '#timerCanvas{flex:3;min-width:220px;} #treeCanvas{flex:1;min-width:90px;} .display-container{gap:2rem;}';
       document.head.appendChild(style);
 
-      // initial draw
       treeHeight = 0;
       drawTime('00:00:00');
 
-      // run resize once to initialize sizes and scale
       setTimeout(resizeCanvases, 50);
     });
   </script>
