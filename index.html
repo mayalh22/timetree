@@ -309,11 +309,12 @@ function formatTime(ms) {
         treeCtx.fill();
       }
       function pauseTimer() {
-        if (!isRunning) return;
-        clearInterval(countdownInterval);
-        isRunning = false;
-        startPauseBtn.textContent = 'Start';
-        pausedTime += Date.now() - startTime;
+
+  if (!isRunning) return;
+  isRunning = false; // This flag stops the requestAnimationFrame loop
+  startPauseBtn.textContent = 'Start';
+  pausedTime += Date.now() - startTime;
+}
       }
       function startTimer() {
         if (isRunning) return;
