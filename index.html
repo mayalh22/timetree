@@ -78,6 +78,15 @@
     border-color: var(--color-text-light);
     color: var(--color-bg-dark);
   }
+  select {
+    font-family: var(--font-pixel);
+    background-color: var(--color-green-accent);
+    color: var(--color-text-light);
+    border: 2px solid var(--color-green-subtle);
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    outline: none;
+  }
   button:disabled {
     cursor: not-allowed;
     opacity: 0.6;
@@ -125,6 +134,15 @@
       <button id="resetBtn" aria-label="Reset Timer">Reset</button>
       <button id="musicBtn" aria-label="Toggle background music">Play Music</button>
     </div>
+    <div style="margin-top:0.6rem;display:flex;gap:0.6rem;align-items:center;">
+      <label for="seasonSelect" style="font-size:0.7rem;opacity:0.9;margin:0;">Season</label>
+      <select id="seasonSelect" aria-label="Season">
+        <option value="spring">Spring</option>
+        <option value="summer" selected>Summer</option>
+        <option value="autumn">Autumn</option>
+        <option value="winter">Winter</option>
+      </select>
+    </div>
   </div>
   <audio id="bgMusic" loop crossorigin="anonymous" preload="auto">
     <source src="https://cdn.pixabay.com/download/audio/2022/03/03/audio_2d59e2f48f.mp3?filename=relaxing-music-ambient-3781.mp3" type="audio/mpeg" />
@@ -140,6 +158,7 @@
       const timerCtx = timerCanvas.getContext('2d');
       const treeCanvas = document.getElementById('treeCanvas');
       const treeCtx = treeCanvas.getContext('2d');
+  const seasonSelect = document.getElementById('seasonSelect');
       let PIXEL_SIZE = 12;
       const FONT_COLOR = '#e0f8cf';
       const DIGIT_WIDTH = 5;
@@ -152,6 +171,53 @@
       let treeHeight = 0;
       let pausedTime = 0;
       let startTime = 0;
+  let animationId = null;
+  const leaves = [];
+  let leafFallActive = false;
+      // WebAudio finish chime
+      let audioCtx = null;
+      function ensureAudioContext() {
+        if (!audioCtx) {
+          try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          } catch (e) {
+            console.warn('WebAudio not supported:', e);
+            audioCtx = null;
+          }
+        }
+        return audioCtx;
+      }
+
+      function playFinishChime() {
+        const ctx = ensureAudioContext();
+        if (!ctx) return;
+        // short 3-note arpeggio
+        const notes = [880, 1100, 1320];
+        const now = ctx.currentTime;
+        const master = ctx.createGain();
+        master.gain.value = 0.001; // start very low to avoid pops
+        master.connect(ctx.destination);
+        // ramp up and down
+        master.gain.setValueAtTime(0.001, now);
+        master.gain.linearRampToValueAtTime(0.12, now + 0.02);
+        master.gain.linearRampToValueAtTime(0.0001, now + 0.9);
+
+        notes.forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          o.type = 'sine';
+          o.frequency.value = freq;
+          const env = ctx.createGain();
+          env.gain.value = 0.0001;
+          o.connect(env);
+          env.connect(master);
+          const t0 = now + i * 0.12;
+          o.start(t0);
+          env.gain.setValueAtTime(0.0001, t0);
+          env.gain.linearRampToValueAtTime(0.18, t0 + 0.02);
+          env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+          o.stop(t0 + 0.18);
+        });
+      }
       const digits = {
         '0': [
           [0,1,1,1,0],
@@ -327,7 +393,7 @@ function formatTime(ms) {
         treeCtx.closePath();
         treeCtx.fill();
 
-        // canopy sizing (bigger when treeHeight grows)
+  // canopy sizing (bigger when treeHeight grows)
         const growthRatio = Math.max(0, Math.min(1, treeHeight / Math.max(1, maxTreeHeight)));
         const canopyBaseRadius = Math.min(cw * 0.48, maxTreeHeight * 0.6);
         const canopyRadius = canopyBaseRadius * (0.6 + 0.9 * growthRatio);
@@ -336,7 +402,9 @@ function formatTime(ms) {
         const blobs = 7; // number of canopy blobs
         for (let i = 0; i < blobs; i++) {
           const angle = (i / blobs) * Math.PI * 2 + (i % 2 === 0 ? -0.3 : 0.3);
-          const spread = canopyRadius * (0.35 + 0.25 * Math.sin(i * 1.3));
+          // apply a small sway offset based on animation time
+          const sway = Math.sin(performance.now() / 800 + i) * (4 * Math.min(1, growthRatio));
+          const spread = canopyRadius * (0.35 + 0.25 * Math.sin(i * 1.3)) + sway;
           const bx = centerX + Math.cos(angle) * spread * (0.4 + 0.6 * growthRatio);
           const by = trunkTopY - Math.abs(Math.sin(angle)) * canopyRadius * 0.35 - canopyRadius * 0.15;
           const br = canopyRadius * (0.45 + 0.25 * Math.cos(i * 1.1)) * (0.7 + 0.6 * growthRatio);
@@ -352,7 +420,7 @@ function formatTime(ms) {
           treeCtx.fill();
         }
 
-        // leaf speckles (deterministic pattern so redraws look stable)
+  // leaf speckles (deterministic pattern so redraws look stable)
         const speckles = 36;
         for (let i = 0; i < speckles; i++) {
           const t = i / speckles;
@@ -364,8 +432,23 @@ function formatTime(ms) {
           const lr = Math.max(1, Math.round(1 + growthRatio * 3 * (Math.abs(Math.sin(i * 2.3)))));
 
           // color variation
-          const light = 190 + Math.floor(60 * Math.abs(Math.sin(i * 2.9)));
-          treeCtx.fillStyle = `rgba(${light},${230 - Math.floor(40 * Math.abs(Math.cos(i * 1.9)))},${100 + Math.floor(30 * growthRatio)},${0.95 * growthRatio})`;
+          // color varies by season
+          const season = seasonSelect ? seasonSelect.value : 'summer';
+          let fillColor;
+          if (season === 'autumn') {
+            const r = 200 + Math.floor(55 * Math.abs(Math.sin(i * 1.9)));
+            const g = 90 + Math.floor(60 * Math.abs(Math.cos(i * 1.9)));
+            const b = 30 + Math.floor(20 * growthRatio);
+            fillColor = `rgba(${r},${g},${b},${0.95 * growthRatio})`;
+          } else if (season === 'spring') {
+            fillColor = `rgba(${180 + Math.floor(30 * Math.abs(Math.sin(i * 1.9)))},${245},${140},${0.95 * growthRatio})`;
+          } else if (season === 'winter') {
+            fillColor = `rgba(${200},${220},${200},${0.6 * growthRatio})`;
+          } else {
+            const light = 190 + Math.floor(60 * Math.abs(Math.sin(i * 2.9)));
+            fillColor = `rgba(${light},${230 - Math.floor(40 * Math.abs(Math.cos(i * 1.9)))},${100 + Math.floor(30 * growthRatio)},${0.95 * growthRatio})`;
+          }
+          treeCtx.fillStyle = fillColor;
           treeCtx.beginPath();
           treeCtx.arc(lx, ly, lr, 0, Math.PI * 2);
           treeCtx.fill();
@@ -382,6 +465,61 @@ function formatTime(ms) {
         treeCtx.beginPath();
         treeCtx.arc(topX, topY, topR, 0, Math.PI * 2);
         treeCtx.fill();
+      }
+
+      // animation loop to add sway/pulse and update falling leaves
+      function animate() {
+        // clear and redraw tree (drawTree uses performance.now() for sway)
+        drawTime(formatTime(timeLeft > 0 ? Math.max(0, timeLeft - (isRunning ? (Date.now() - startTime + pausedTime) : 0)) : 0));
+        drawTree();
+
+        // update falling leaves
+        if (leafFallActive) {
+          for (let i = leaves.length - 1; i >= 0; i--) {
+            const leaf = leaves[i];
+            leaf.vy += 0.06; // gravity
+            leaf.vx *= 0.995; // slight air drag
+            leaf.x += leaf.vx;
+            leaf.y += leaf.vy;
+            leaf.rot += leaf.spin;
+
+            // draw leaf
+            treeCtx.save();
+            treeCtx.translate(leaf.x, leaf.y);
+            treeCtx.rotate(leaf.rot);
+            treeCtx.fillStyle = leaf.color;
+            treeCtx.beginPath();
+            treeCtx.ellipse(0, 0, leaf.r * 1.1, leaf.r * 0.6, 0, 0, Math.PI * 2);
+            treeCtx.fill();
+            treeCtx.restore();
+
+            // remove when off-screen
+            if (leaf.y > treeCanvas.clientHeight + 20 || leaf.x < -50 || leaf.x > treeCanvas.clientWidth + 50) {
+              leaves.splice(i, 1);
+            }
+          }
+        }
+
+        animationId = requestAnimationFrame(animate);
+      }
+
+      function spawnLeaves(count = 24) {
+        leafFallActive = true;
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const r = 6 + Math.random() * 6;
+          const x = treeCanvas.clientWidth / 2 + (Math.random() - 0.5) * 80;
+          const y = Math.max(0, (treeCanvas.clientHeight - treeHeight) - Math.random() * 40);
+          const vx = (Math.random() - 0.5) * 1.6;
+          const vy = -1 - Math.random() * 0.5;
+          const spin = (Math.random() - 0.5) * 0.12;
+          const season = seasonSelect ? seasonSelect.value : 'summer';
+          let color = 'rgba(200,220,120,0.95)';
+          if (season === 'autumn') color = `rgba(${210 + Math.floor(Math.random()*30)},${80 + Math.floor(Math.random()*50)},${30 + Math.floor(Math.random()*20)},0.98)`;
+          if (season === 'spring') color = `rgba(180,240,140,0.9)`;
+          if (season === 'winter') color = `rgba(220,230,220,0.8)`;
+          leaves.push({ x, y, vx, vy, r, rot: Math.random() * Math.PI, spin, color });
+        }
       }
       function pauseTimer() {
         if (!isRunning) return;
@@ -419,8 +557,11 @@ function formatTime(ms) {
             drawTree();
             timeLeft = 0;
             pausedTime = 0;
-            try { bgMusic.pause(); } catch (e) {}
-            if (musicBtn) musicBtn.textContent = 'Play Music';
+            // spawn falling leaves when timer completes
+            spawnLeaves(36);
+            // play finish chime (resume context if suspended)
+            try { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); } catch(e){}
+            playFinishChime();
             return;
           }
           const growthRatio = Math.min(1, elapsedTime / (totalSeconds * 1000));
@@ -441,6 +582,9 @@ function formatTime(ms) {
         pausedTime = 0;
         drawTime('00:00:00');
         drawTree();
+        // stop leaf fall and clear leaves
+        leafFallActive = false;
+        leaves.length = 0;
       }
       startPauseBtn.addEventListener('click', () => {
         if (isRunning) {
@@ -450,7 +594,7 @@ function formatTime(ms) {
         }
       });
       resetBtn.addEventListener('click', resetTimer);
-        // music controls
+    // music controls
         if (musicBtn && bgMusic) {
           musicBtn.addEventListener('click', () => {
             if (bgMusic.paused) {
@@ -461,6 +605,22 @@ function formatTime(ms) {
               } else {
                 musicBtn.textContent = 'Pause Music';
               }
+              // create/resume AudioContext on first user gesture so finish chime can play
+              function primeAudio() {
+                const ctx = ensureAudioContext();
+                if (ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{});
+              }
+              [startPauseBtn, resetBtn, musicBtn, seasonSelect].forEach(el => {
+                if (el) el.addEventListener('click', primeAudio, { once: true });
+              });
+              // season change -> redraw quickly
+              if (seasonSelect) {
+                seasonSelect.addEventListener('change', () => { drawTree(); });
+              }
+
+              // start animation loop
+              if (!animationId) animationId = requestAnimationFrame(animate);
+
             } else {
               bgMusic.pause();
               musicBtn.textContent = 'Play Music';
