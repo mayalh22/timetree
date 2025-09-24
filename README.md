@@ -17,3 +17,5 @@ Start timer and Pause timer functions handle primary user-facing logic, controll
 The sizing of the canvas in managed by the resize canvases function, changing pixel size
 
 It is simple in aesthetic and code: not needing external libraries or frameworks
+
+I used gemini for help with the pause timer function and overall syntax feedback and I used copilot for help fixing indent errors
