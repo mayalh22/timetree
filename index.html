@@ -123,13 +123,19 @@
     <div>
       <button id="startPauseBtn" aria-label="Start or Pause Timer">Start</button>
       <button id="resetBtn" aria-label="Reset Timer">Reset</button>
+      <button id="musicBtn" aria-label="Toggle background music">Play Music</button>
     </div>
   </div>
+  <audio id="bgMusic" loop crossorigin="anonymous" preload="auto">
+    <source src="https://cdn.pixabay.com/download/audio/2022/03/03/audio_2d59e2f48f.mp3?filename=relaxing-music-ambient-3781.mp3" type="audio/mpeg" />
+  </audio>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
   const startPauseBtn = document.getElementById('startPauseBtn');
   const resetBtn = document.getElementById('resetBtn');
   const input = document.getElementById('inputSeconds');
+    const musicBtn = document.getElementById('musicBtn');
+    const bgMusic = document.getElementById('bgMusic');
       const timerCanvas = document.getElementById('timerCanvas');
       const timerCtx = timerCanvas.getContext('2d');
       const treeCanvas = document.getElementById('treeCanvas');
@@ -343,6 +349,10 @@ function formatTime(ms) {
             drawTree();
             timeLeft = 0;
             pausedTime = 0;
+              try { bgMusic.pause(); } catch (e) {}
+              if (musicBtn) musicBtn.textContent = 'Play Music';
+        try { bgMusic.pause(); } catch (e) {}
+        if (musicBtn) musicBtn.textContent = 'Play Music';
             return;
           }
           const growthRatio = Math.min(1, elapsedTime / (totalSeconds * 1000));
@@ -372,6 +382,23 @@ function formatTime(ms) {
         }
       });
       resetBtn.addEventListener('click', resetTimer);
+        // music controls
+        if (musicBtn && bgMusic) {
+          musicBtn.addEventListener('click', () => {
+            if (bgMusic.paused) {
+              const p = bgMusic.play();
+              if (p && typeof p.then === 'function') {
+                p.then(() => { musicBtn.textContent = 'Pause Music'; })
+                 .catch(err => { console.warn('Music play blocked', err); musicBtn.textContent = 'Play Music'; });
+              } else {
+                musicBtn.textContent = 'Pause Music';
+              }
+            } else {
+              bgMusic.pause();
+              musicBtn.textContent = 'Play Music';
+            }
+          });
+        }
 function resizeCanvases() {
     const dpr = window.devicePixelRatio || 1;
     const timerDisplay = timerCanvas.getBoundingClientRect();
