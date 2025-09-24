@@ -301,16 +301,86 @@ function formatTime(ms) {
       function drawTree() {
         const cw = treeCanvas.clientWidth;
         const ch = treeCanvas.clientHeight;
-        const trunkWidth = Math.max(6, Math.floor(cw * 0.12));
-        const trunkX = Math.floor(cw / 2 - trunkWidth / 2);
-        const trunkY = ch;
         treeCtx.clearRect(0, 0, cw, ch);
-        treeCtx.fillStyle = '#7b3f00';
-        treeCtx.fillRect(trunkX, trunkY - treeHeight, trunkWidth, treeHeight);
-        const leafRadius = Math.min(cw * 0.4, treeHeight / 4);
+
+        // base coordinates
+        const centerX = Math.floor(cw / 2);
+        const baseY = ch;
+
+        // trunk geometry scales with canvas width
+        const trunkW = Math.max(8, Math.floor(cw * 0.10));
+        const trunkTopY = baseY - treeHeight;
+
+        // draw tapered trunk using a path and a vertical gradient
+        const trunkGradient = treeCtx.createLinearGradient(0, trunkTopY, 0, baseY);
+        trunkGradient.addColorStop(0, '#8b5a2b');
+        trunkGradient.addColorStop(1, '#5b3818');
+
+        treeCtx.fillStyle = trunkGradient;
         treeCtx.beginPath();
-        treeCtx.arc(trunkX + trunkWidth / 2, trunkY - treeHeight, leafRadius, 0, 2 * Math.PI);
-        treeCtx.fillStyle = '#228B22';
+        // left edge
+        treeCtx.moveTo(centerX - trunkW / 2, baseY);
+        treeCtx.quadraticCurveTo(centerX - trunkW * 0.6, trunkTopY + treeHeight * 0.35, centerX - trunkW * 0.18, trunkTopY);
+        // right edge
+        treeCtx.lineTo(centerX + trunkW * 0.18, trunkTopY);
+        treeCtx.quadraticCurveTo(centerX + trunkW * 0.6, trunkTopY + treeHeight * 0.35, centerX + trunkW / 2, baseY);
+        treeCtx.closePath();
+        treeCtx.fill();
+
+        // canopy sizing (bigger when treeHeight grows)
+        const growthRatio = Math.max(0, Math.min(1, treeHeight / Math.max(1, maxTreeHeight)));
+        const canopyBaseRadius = Math.min(cw * 0.48, maxTreeHeight * 0.6);
+        const canopyRadius = canopyBaseRadius * (0.6 + 0.9 * growthRatio);
+
+        // layered canopy: several overlapping blobs with radial gradients
+        const blobs = 7; // number of canopy blobs
+        for (let i = 0; i < blobs; i++) {
+          const angle = (i / blobs) * Math.PI * 2 + (i % 2 === 0 ? -0.3 : 0.3);
+          const spread = canopyRadius * (0.35 + 0.25 * Math.sin(i * 1.3));
+          const bx = centerX + Math.cos(angle) * spread * (0.4 + 0.6 * growthRatio);
+          const by = trunkTopY - Math.abs(Math.sin(angle)) * canopyRadius * 0.35 - canopyRadius * 0.15;
+          const br = canopyRadius * (0.45 + 0.25 * Math.cos(i * 1.1)) * (0.7 + 0.6 * growthRatio);
+
+          const g = treeCtx.createRadialGradient(bx, by, br * 0.1, bx, by, br);
+          g.addColorStop(0, `rgba(200,255,180,${0.95 * growthRatio})`);
+          g.addColorStop(0.6, `rgba(90,180,80,${0.85 * growthRatio})`);
+          g.addColorStop(1, `rgba(30,110,40,${0.9 * growthRatio})`);
+
+          treeCtx.fillStyle = g;
+          treeCtx.beginPath();
+          treeCtx.arc(bx, by, br, 0, Math.PI * 2);
+          treeCtx.fill();
+        }
+
+        // leaf speckles (deterministic pattern so redraws look stable)
+        const speckles = 36;
+        for (let i = 0; i < speckles; i++) {
+          const t = i / speckles;
+          // deterministic polar coords
+          const a = t * Math.PI * 2 + (Math.sin(t * 7) * 0.3);
+          const r = canopyRadius * (0.12 + 0.75 * Math.abs(Math.cos(t * 5)));
+          const lx = centerX + Math.cos(a) * r * (0.6 + 0.6 * growthRatio) + (Math.sin(i * 3.1) * 2);
+          const ly = trunkTopY - Math.abs(Math.sin(a)) * canopyRadius * 0.35 - (Math.cos(i * 2.7) * 2);
+          const lr = Math.max(1, Math.round(1 + growthRatio * 3 * (Math.abs(Math.sin(i * 2.3)))));
+
+          // color variation
+          const light = 190 + Math.floor(60 * Math.abs(Math.sin(i * 2.9)));
+          treeCtx.fillStyle = `rgba(${light},${230 - Math.floor(40 * Math.abs(Math.cos(i * 1.9)))},${100 + Math.floor(30 * growthRatio)},${0.95 * growthRatio})`;
+          treeCtx.beginPath();
+          treeCtx.arc(lx, ly, lr, 0, Math.PI * 2);
+          treeCtx.fill();
+        }
+
+        // highlight at canopy top
+        const topX = centerX;
+        const topY = trunkTopY - canopyRadius * 0.15;
+        const topR = canopyRadius * 0.25 * (0.6 + 0.4 * growthRatio);
+        const topG = treeCtx.createRadialGradient(topX, topY, 0, topX, topY, topR);
+        topG.addColorStop(0, `rgba(240,255,200,${0.35 * growthRatio})`);
+        topG.addColorStop(1, `rgba(240,255,200,0)`);
+        treeCtx.fillStyle = topG;
+        treeCtx.beginPath();
+        treeCtx.arc(topX, topY, topR, 0, Math.PI * 2);
         treeCtx.fill();
       }
       function pauseTimer() {
@@ -349,10 +419,8 @@ function formatTime(ms) {
             drawTree();
             timeLeft = 0;
             pausedTime = 0;
-              try { bgMusic.pause(); } catch (e) {}
-              if (musicBtn) musicBtn.textContent = 'Play Music';
-        try { bgMusic.pause(); } catch (e) {}
-        if (musicBtn) musicBtn.textContent = 'Play Music';
+            try { bgMusic.pause(); } catch (e) {}
+            if (musicBtn) musicBtn.textContent = 'Play Music';
             return;
           }
           const growthRatio = Math.min(1, elapsedTime / (totalSeconds * 1000));
