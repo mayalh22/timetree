@@ -374,27 +374,25 @@ function formatTime(ms) {
         }
       });
       resetBtn.addEventListener('click', resetTimer);
-      function resizeCanvases() {
-        const dpr = window.devicePixelRatio || 1;
-        const tRect = timerCanvas.getBoundingClientRect();
-        const trRect = treeCanvas.getBoundingClientRect();
-        timerCanvas.width = Math.max(200, Math.floor(tRect.width * dpr));
-        timerCanvas.height = Math.max(100, Math.floor(Math.max(tRect.height, tRect.width * 0.35) * dpr));
-        timerCanvas.style.height = (timerCanvas.height / dpr) + 'px';
-        treeCanvas.width = Math.max(100, Math.floor(trRect.width * dpr));
-        treeCanvas.height = Math.max(100, Math.floor(Math.max(trRect.height, trRect.width * 1.6) * dpr));
-        treeCanvas.style.height = (treeCanvas.height / dpr) + 'px';
-        timerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        treeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const desiredWidth = timerCanvas.clientWidth * 0.9;
-        const chars = 8;
-        PIXEL_SIZE = Math.max(4, Math.floor(desiredWidth / (chars * DIGIT_WIDTH)));
-        maxTreeHeight = treeCanvas.clientHeight - 50;
-        const currentRemaining = timeLeft > 0 ? Math.max(0, timeLeft - (isRunning ? (Date.now() - startTime + pausedTime) : 0)) : 0;
-        drawTime(formatTime(currentRemaining));
-        drawTree();
-      }
-      window.addEventListener('resize', resizeCanvases);
+function resizeCanvases() {
+    const dpr = window.devicePixelRatio || 1;
+    const timerDisplay = timerCanvas.getBoundingClientRect();
+    const treeDisplay = treeCanvas.getBoundingClientRect();
+    timerCanvas.width = Math.max(200, Math.floor(timerDisplay.width * dpr));
+    timerCanvas.height = Math.max(100, Math.floor(Math.max(timerDisplay.height, timerDisplay.width * 0.35) * dpr));
+    treeCanvas.width = Math.max(100, Math.floor(treeDisplay.width * dpr));
+    treeCanvas.height = Math.max(100, Math.floor(Math.max(treeDisplay.height, treeDisplay.width * 1.6) * dpr));
+    timerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    treeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const desiredWidth = timerCanvas.clientWidth * 0.9;
+    const charCount = 8; // M:SS:ms is 8 characters
+    PIXEL_SIZE = Math.max(4, Math.floor(desiredWidth / (charCount * DIGIT_WIDTH)));
+    maxTreeHeight = treeCanvas.clientHeight - 50;
+    const currentRemaining = timeLeft > 0 ? Math.max(0, timeLeft - (isRunning ? (Date.now() - startTime + pausedTime) : 0)) : 0;
+    drawTime(formatTime(currentRemaining));
+    drawTree();
+}      
+    window.addEventListener('resize', resizeCanvases);
       timerCanvas.style.width = '';
       treeCanvas.style.width = '';
       const style = document.createElement('style');
