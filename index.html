@@ -174,7 +174,6 @@
   let animationId = null;
   const leaves = [];
   let leafFallActive = false;
-      // WebAudio finish chime
       let audioCtx = null;
       function ensureAudioContext() {
         if (!audioCtx) {
@@ -187,17 +186,14 @@
         }
         return audioCtx;
       }
-
       function playFinishChime() {
         const ctx = ensureAudioContext();
         if (!ctx) return;
-        // short 3-note arpeggio
         const notes = [880, 1100, 1320];
         const now = ctx.currentTime;
         const master = ctx.createGain();
-        master.gain.value = 0.001; // start very low to avoid pops
+        master.gain.value = 0.001;
         master.connect(ctx.destination);
-        // ramp up and down
         master.gain.setValueAtTime(0.001, now);
         master.gain.linearRampToValueAtTime(0.12, now + 0.02);
         master.gain.linearRampToValueAtTime(0.0001, now + 0.9);
@@ -368,71 +364,49 @@ function formatTime(ms) {
         const cw = treeCanvas.clientWidth;
         const ch = treeCanvas.clientHeight;
         treeCtx.clearRect(0, 0, cw, ch);
-
-        // base coordinates
         const centerX = Math.floor(cw / 2);
         const baseY = ch;
-
-        // trunk geometry scales with canvas width
         const trunkW = Math.max(8, Math.floor(cw * 0.10));
         const trunkTopY = baseY - treeHeight;
-
-        // draw tapered trunk using a path and a vertical gradient
         const trunkGradient = treeCtx.createLinearGradient(0, trunkTopY, 0, baseY);
         trunkGradient.addColorStop(0, '#8b5a2b');
         trunkGradient.addColorStop(1, '#5b3818');
-
         treeCtx.fillStyle = trunkGradient;
         treeCtx.beginPath();
-        // left edge
         treeCtx.moveTo(centerX - trunkW / 2, baseY);
         treeCtx.quadraticCurveTo(centerX - trunkW * 0.6, trunkTopY + treeHeight * 0.35, centerX - trunkW * 0.18, trunkTopY);
-        // right edge
         treeCtx.lineTo(centerX + trunkW * 0.18, trunkTopY);
         treeCtx.quadraticCurveTo(centerX + trunkW * 0.6, trunkTopY + treeHeight * 0.35, centerX + trunkW / 2, baseY);
         treeCtx.closePath();
         treeCtx.fill();
-
-  // canopy sizing (bigger when treeHeight grows)
         const growthRatio = Math.max(0, Math.min(1, treeHeight / Math.max(1, maxTreeHeight)));
         const canopyBaseRadius = Math.min(cw * 0.48, maxTreeHeight * 0.6);
         const canopyRadius = canopyBaseRadius * (0.6 + 0.9 * growthRatio);
-
-        // layered canopy: several overlapping blobs with radial gradients
-        const blobs = 7; // number of canopy blobs
+        const blobs = 7;
         for (let i = 0; i < blobs; i++) {
           const angle = (i / blobs) * Math.PI * 2 + (i % 2 === 0 ? -0.3 : 0.3);
-          // apply a small sway offset based on animation time
           const sway = Math.sin(performance.now() / 800 + i) * (4 * Math.min(1, growthRatio));
           const spread = canopyRadius * (0.35 + 0.25 * Math.sin(i * 1.3)) + sway;
           const bx = centerX + Math.cos(angle) * spread * (0.4 + 0.6 * growthRatio);
           const by = trunkTopY - Math.abs(Math.sin(angle)) * canopyRadius * 0.35 - canopyRadius * 0.15;
           const br = canopyRadius * (0.45 + 0.25 * Math.cos(i * 1.1)) * (0.7 + 0.6 * growthRatio);
-
           const g = treeCtx.createRadialGradient(bx, by, br * 0.1, bx, by, br);
           g.addColorStop(0, `rgba(200,255,180,${0.95 * growthRatio})`);
           g.addColorStop(0.6, `rgba(90,180,80,${0.85 * growthRatio})`);
           g.addColorStop(1, `rgba(30,110,40,${0.9 * growthRatio})`);
-
           treeCtx.fillStyle = g;
           treeCtx.beginPath();
           treeCtx.arc(bx, by, br, 0, Math.PI * 2);
           treeCtx.fill();
         }
-
-  // leaf speckles (deterministic pattern so redraws look stable)
         const speckles = 36;
         for (let i = 0; i < speckles; i++) {
           const t = i / speckles;
-          // deterministic polar coords
           const a = t * Math.PI * 2 + (Math.sin(t * 7) * 0.3);
           const r = canopyRadius * (0.12 + 0.75 * Math.abs(Math.cos(t * 5)));
           const lx = centerX + Math.cos(a) * r * (0.6 + 0.6 * growthRatio) + (Math.sin(i * 3.1) * 2);
           const ly = trunkTopY - Math.abs(Math.sin(a)) * canopyRadius * 0.35 - (Math.cos(i * 2.7) * 2);
           const lr = Math.max(1, Math.round(1 + growthRatio * 3 * (Math.abs(Math.sin(i * 2.3)))));
-
-          // color variation
-          // color varies by season
           const season = seasonSelect ? seasonSelect.value : 'summer';
           let fillColor;
           if (season === 'autumn') {
@@ -453,8 +427,6 @@ function formatTime(ms) {
           treeCtx.arc(lx, ly, lr, 0, Math.PI * 2);
           treeCtx.fill();
         }
-
-        // highlight at canopy top
         const topX = centerX;
         const topY = trunkTopY - canopyRadius * 0.15;
         const topR = canopyRadius * 0.25 * (0.6 + 0.4 * growthRatio);
@@ -466,24 +438,17 @@ function formatTime(ms) {
         treeCtx.arc(topX, topY, topR, 0, Math.PI * 2);
         treeCtx.fill();
       }
-
-      // animation loop to add sway/pulse and update falling leaves
       function animate() {
-        // clear and redraw tree (drawTree uses performance.now() for sway)
         drawTime(formatTime(timeLeft > 0 ? Math.max(0, timeLeft - (isRunning ? (Date.now() - startTime + pausedTime) : 0)) : 0));
         drawTree();
-
-        // update falling leaves
         if (leafFallActive) {
           for (let i = leaves.length - 1; i >= 0; i--) {
             const leaf = leaves[i];
-            leaf.vy += 0.06; // gravity
-            leaf.vx *= 0.995; // slight air drag
+            leaf.vy += 0.06;
+            leaf.vx *= 0.995;
             leaf.x += leaf.vx;
             leaf.y += leaf.vy;
             leaf.rot += leaf.spin;
-
-            // draw leaf
             treeCtx.save();
             treeCtx.translate(leaf.x, leaf.y);
             treeCtx.rotate(leaf.rot);
@@ -492,17 +457,13 @@ function formatTime(ms) {
             treeCtx.ellipse(0, 0, leaf.r * 1.1, leaf.r * 0.6, 0, 0, Math.PI * 2);
             treeCtx.fill();
             treeCtx.restore();
-
-            // remove when off-screen
             if (leaf.y > treeCanvas.clientHeight + 20 || leaf.x < -50 || leaf.x > treeCanvas.clientWidth + 50) {
               leaves.splice(i, 1);
             }
           }
         }
-
         animationId = requestAnimationFrame(animate);
       }
-
       function spawnLeaves(count = 24) {
         leafFallActive = true;
         for (let i = 0; i < count; i++) {
@@ -523,7 +484,7 @@ function formatTime(ms) {
       }
       function pauseTimer() {
         if (!isRunning) return;
-        isRunning = false; // This flag stops the requestAnimationFrame loop
+        isRunning = false;
         startPauseBtn.textContent = 'Start';
         pausedTime += Date.now() - startTime;
       }
@@ -557,9 +518,7 @@ function formatTime(ms) {
             drawTree();
             timeLeft = 0;
             pausedTime = 0;
-            // spawn falling leaves when timer completes
             spawnLeaves(36);
-            // play finish chime (resume context if suspended)
             try { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); } catch(e){}
             playFinishChime();
             return;
@@ -582,7 +541,6 @@ function formatTime(ms) {
         pausedTime = 0;
         drawTime('00:00:00');
         drawTree();
-        // stop leaf fall and clear leaves
         leafFallActive = false;
         leaves.length = 0;
       }
@@ -594,7 +552,6 @@ function formatTime(ms) {
         }
       });
       resetBtn.addEventListener('click', resetTimer);
-    // music controls
         if (musicBtn && bgMusic) {
           musicBtn.addEventListener('click', () => {
             if (bgMusic.paused) {
@@ -605,7 +562,6 @@ function formatTime(ms) {
               } else {
                 musicBtn.textContent = 'Pause Music';
               }
-              // create/resume AudioContext on first user gesture so finish chime can play
               function primeAudio() {
                 const ctx = ensureAudioContext();
                 if (ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{});
@@ -613,12 +569,10 @@ function formatTime(ms) {
               [startPauseBtn, resetBtn, musicBtn, seasonSelect].forEach(el => {
                 if (el) el.addEventListener('click', primeAudio, { once: true });
               });
-              // season change -> redraw quickly
               if (seasonSelect) {
                 seasonSelect.addEventListener('change', () => { drawTree(); });
               }
 
-              // start animation loop
               if (!animationId) animationId = requestAnimationFrame(animate);
 
             } else {
@@ -638,7 +592,7 @@ function resizeCanvases() {
     timerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     treeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const desiredWidth = timerCanvas.clientWidth * 0.9;
-    const charCount = 8; // M:SS:ms is 8 characters
+    const charCount = 8;
     PIXEL_SIZE = Math.max(4, Math.floor(desiredWidth / (charCount * DIGIT_WIDTH)));
     maxTreeHeight = treeCanvas.clientHeight - 50;
     const currentRemaining = timeLeft > 0 ? Math.max(0, timeLeft - (isRunning ? (Date.now() - startTime + pausedTime) : 0)) : 0;
