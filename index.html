@@ -10,7 +10,6 @@
   href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
   rel="stylesheet"
 >
-'use strict';
 <style>
 :root {
   --color-bg-dark: hsl(88, 83%, 80%);
@@ -309,12 +308,10 @@ function formatTime(ms) {
         treeCtx.fill();
       }
       function pauseTimer() {
-
-  if (!isRunning) return;
-  isRunning = false; // This flag stops the requestAnimationFrame loop
-  startPauseBtn.textContent = 'Start';
-  pausedTime += Date.now() - startTime;
-}
+        if (!isRunning) return;
+        isRunning = false; // This flag stops the requestAnimationFrame loop
+        startPauseBtn.textContent = 'Start';
+        pausedTime += Date.now() - startTime;
       }
       function startTimer() {
         if (isRunning) return;
@@ -406,3 +403,5 @@ function resizeCanvases() {
   </script>
 </body>
 </html>
+
+\\ check in \\
