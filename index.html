@@ -399,7 +399,6 @@
         });
       }
       
-      // attempt to fetch remote audio source to detect 403/CORS; if fetch fails, disable music button and prompt user to load file
       (async function verifyRemoteMusic(){
         try {
           const srcEl = bgMusic.querySelector('source');
@@ -407,12 +406,10 @@
           if (!src) throw new Error('no source');
           const r = await fetch(src, { method: 'GET', mode: 'cors' });
           if (!r.ok) throw new Error('status ' + r.status);
-          // if allowed, replace audio src with blob URL to avoid playback redirects
           const blob = await r.blob();
           const blobUrl = URL.createObjectURL(blob);
           bgMusic.src = blobUrl;
           bgMusic.load();
-          // ensure loadMusic button is optional
           if (loadMusicBtn) loadMusicBtn.disabled = false;
         } catch (err) {
           console.warn('Remote music unavailable:', err);
