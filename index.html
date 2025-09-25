@@ -310,24 +310,14 @@
         const topX=cx, topY2=topY-cr*0.15, topR=cr*0.25*(0.6+0.4*growth); const tg=treeCtx.createRadialGradient(topX,topY2,0,topX,topY2,topR); tg.addColorStop(0,`rgba(240,255,200,${0.35*growth})`); tg.addColorStop(1,'rgba(240,255,200,0)'); treeCtx.fillStyle=tg; treeCtx.beginPath(); treeCtx.arc(topX,topY2,topR,0,Math.PI*2); treeCtx.fill();
       };
       const animate = () => {
-        const remaining = timeLeft>0?Math.max(0,timeLeft-(isRunning?(Date.now()-startTime+pausedTime):0)):0;
-        drawTime(formatTime(remaining));
-        drawTree();
-        if (leafFallActive) for (let i=leaves.length-1;i>=0;i--){ const L=leaves[i]; L.vy+=0.06; L.vx*=0.995; L.x+=L.vx; L.y+=L.vy; L.rot+=L.spin; treeCtx.save(); treeCtx.translate(L.x,L.y); treeCtx.rotate(L.rot); treeCtx.fillStyle=L.color; treeCtx.beginPath(); treeCtx.ellipse(0,0,L.r*1.1,L.r*0.6,0,0,Math.PI*2); treeCtx.fill(); treeCtx.restore(); if (L.y>treeCanvas.clientHeight+20||L.x<-50||L.x>treeCanvas.clientWidth+50) leaves.splice(i,1); }
-        animationId=requestAnimationFrame(animate);
-      };
-      const spawnLeaves = (n=24)=>{ leafFallActive=true; for(let i=0;i<n;i++){ const r=6+Math.random()*6, x=treeCanvas.clientWidth/2+(Math.random()-0.5)*80, y=Math.max(0,(treeCanvas.clientHeight-treeHeight)-Math.random()*40), vx=(Math.random()-0.5)*1.6, vy=-1-Math.random()*0.5, spin=(Math.random()-0.5)*0.12, s=seasonSelect?seasonSelect.value:'summer'; let color='rgba(200,220,120,0.95)'; if(s==='autumn') color=`rgba(${210+Math.floor(Math.random()*30)},${80+Math.floor(Math.random()*50)},${30+Math.floor(Math.random()*20)},0.98)`; if(s==='spring') color='rgba(180,240,140,0.9)'; if(s==='winter') color='rgba(220,230,220,0.8)'; leaves.push({x,y,vx,vy,r,rot:Math.random()*Math.PI,spin,color}); } };
-      const pauseTimer = ()=>{ if(!isRunning) return; isRunning=false; startPauseBtn.textContent='Start'; pausedTime+=Date.now()-startTime; };
-      // timer tick using rAF for smoothness and precise elapsed tracking
-      let lastTick = 0;
-      const tick = (ts) => {
-        if (!lastTick) lastTick = ts;
-        const dt = ts - lastTick;
-        lastTick = ts;
-        if (isRunning) {
-          const elapsed = Date.now() - startTime + pausedTime;
-          const remaining = timeLeft - elapsed;
-          if (remaining <= 0) {
+        const now = Date.now();
+        const remaining = timeLeft>0?Math.max(0,timeLeft-(isRunning?(now - startTime + pausedTime):0)):0;
+
+        // update growth / finish logic when running
+        if (isRunning && timeLeft > 0) {
+          const elapsed = now - startTime + pausedTime;
+          if (elapsed >= timeLeft) {
+            // finished
             isRunning = false;
             startPauseBtn.textContent = 'Start';
             input.disabled = false;
@@ -341,12 +331,23 @@
           } else {
             const growth = Math.min(1, elapsed / (totalSeconds * 1000));
             treeHeight = growth * maxTreeHeight;
-            drawTime(formatTime(remaining));
+            drawTime(formatTime(Math.max(0, timeLeft - elapsed)));
             drawTree();
           }
+        } else {
+          // not running: just render current state
+          drawTime(formatTime(remaining));
+          drawTree();
         }
-        animationId = requestAnimationFrame(tick);
+
+        // update falling leaves if active
+        if (leafFallActive) for (let i=leaves.length-1;i>=0;i--){ const L=leaves[i]; L.vy+=0.06; L.vx*=0.995; L.x+=L.vx; L.y+=L.vy; L.rot+=L.spin; treeCtx.save(); treeCtx.translate(L.x,L.y); treeCtx.rotate(L.rot); treeCtx.fillStyle=L.color; treeCtx.beginPath(); treeCtx.ellipse(0,0,L.r*1.1,L.r*0.6,0,0,Math.PI*2); treeCtx.fill(); treeCtx.restore(); if (L.y>treeCanvas.clientHeight+20||L.x<-50||L.x>treeCanvas.clientWidth+50) leaves.splice(i,1); }
+
+        animationId=requestAnimationFrame(animate);
       };
+      const spawnLeaves = (n=24)=>{ leafFallActive=true; for(let i=0;i<n;i++){ const r=6+Math.random()*6, x=treeCanvas.clientWidth/2+(Math.random()-0.5)*80, y=Math.max(0,(treeCanvas.clientHeight-treeHeight)-Math.random()*40), vx=(Math.random()-0.5)*1.6, vy=-1-Math.random()*0.5, spin=(Math.random()-0.5)*0.12, s=seasonSelect?seasonSelect.value:'summer'; let color='rgba(200,220,120,0.95)'; if(s==='autumn') color=`rgba(${210+Math.floor(Math.random()*30)},${80+Math.floor(Math.random()*50)},${30+Math.floor(Math.random()*20)},0.98)`; if(s==='spring') color='rgba(180,240,140,0.9)'; if(s==='winter') color='rgba(220,230,220,0.8)'; leaves.push({x,y,vx,vy,r,rot:Math.random()*Math.PI,spin,color}); } };
+      const pauseTimer = ()=>{ if(!isRunning) return; isRunning=false; startPauseBtn.textContent='Start'; pausedTime+=Date.now()-startTime; };
+      
       const startTimer = ()=>{
         if (isRunning) return;
         if (timeLeft <= 0) {
