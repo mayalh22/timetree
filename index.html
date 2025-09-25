@@ -133,6 +133,7 @@
       <button id="startPauseBtn" aria-label="Start or Pause Timer">Start</button>
       <button id="resetBtn" aria-label="Reset Timer">Reset</button>
       <button id="musicBtn" aria-label="Toggle background music">Play Music</button>
+      <button id="loadMusicBtn" aria-label="Load local music file" style="font-size:0.7rem;padding:0.5rem;">Load Music</button>
     </div>
     <div id="timeLive" aria-live="polite" style="position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden;">00:00:00</div>
     <div style="margin-top:0.6rem;display:flex;gap:0.6rem;align-items:center;">
@@ -148,6 +149,7 @@
   <audio id="bgMusic" loop crossorigin="anonymous" preload="auto">
     <source src="https://cdn.pixabay.com/download/audio/2022/03/03/audio_2d59e2f48f.mp3?filename=relaxing-music-ambient-3781.mp3" type="audio/mpeg" />
   </audio>
+  <input id="musicFile" type="file" accept="audio/*" style="display:none;" />
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const $ = id => document.getElementById(id);
@@ -363,6 +365,19 @@
         if (e.code === 'Space') { e.preventDefault(); isRunning?pauseTimer():startTimer(); }
         if (e.key === 'r' || e.key === 'R') { resetTimer(); }
       });
+      const musicFile = $('musicFile');
+      const loadMusicBtn = $('loadMusicBtn');
+
+      if (loadMusicBtn && musicFile) {
+        loadMusicBtn.addEventListener('click', ()=> musicFile.click());
+        musicFile.addEventListener('change', ()=>{
+          const f = musicFile.files && musicFile.files[0];
+          if (!f) return;
+          try { const url = URL.createObjectURL(f); bgMusic.src = url; bgMusic.load(); musicBtn.disabled = false; musicBtn.textContent = 'Play Music'; }
+          catch(e){ console.warn('Failed to load local music file', e); }
+        });
+      }
+
       if (musicBtn && bgMusic) {
         bgMusic.addEventListener('play', () => musicBtn.textContent = 'Pause Music');
         bgMusic.addEventListener('pause', () => musicBtn.textContent = 'Play Music');
@@ -383,6 +398,28 @@
           }
         });
       }
+      
+      // attempt to fetch remote audio source to detect 403/CORS; if fetch fails, disable music button and prompt user to load file
+      (async function verifyRemoteMusic(){
+        try {
+          const srcEl = bgMusic.querySelector('source');
+          const src = srcEl && srcEl.src;
+          if (!src) throw new Error('no source');
+          const r = await fetch(src, { method: 'GET', mode: 'cors' });
+          if (!r.ok) throw new Error('status ' + r.status);
+          // if allowed, replace audio src with blob URL to avoid playback redirects
+          const blob = await r.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          bgMusic.src = blobUrl;
+          bgMusic.load();
+          // ensure loadMusic button is optional
+          if (loadMusicBtn) loadMusicBtn.disabled = false;
+        } catch (err) {
+          console.warn('Remote music unavailable:', err);
+          if (musicBtn) { musicBtn.disabled = true; musicBtn.textContent = 'Music Unavailable'; }
+          if (loadMusicBtn) loadMusicBtn.disabled = false;
+        }
+      })();
       const primeAudio = ()=>{ const c=ensureAudio(); if(c&&c.state==='suspended') c.resume().catch(()=>{}); };
       [startPauseBtn,resetBtn,musicBtn,seasonSelect].forEach(el=>el&&el.addEventListener('click',primeAudio,{once:true}));
       seasonSelect&&seasonSelect.addEventListener('change',()=>drawTree());
