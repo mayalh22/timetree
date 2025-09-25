@@ -298,8 +298,12 @@
         const cx=Math.floor(cw/2),baseY=ch,tw=Math.max(8,Math.floor(cw*0.1)),topY=baseY-treeHeight;
         const g=treeCtx.createLinearGradient(0,topY,0,baseY); g.addColorStop(0,'#8b5a2b'); g.addColorStop(1,'#5b3818'); treeCtx.fillStyle=g;
         treeCtx.beginPath(); treeCtx.moveTo(cx-tw/2,baseY); treeCtx.quadraticCurveTo(cx-tw*0.6,topY+treeHeight*0.35,cx-tw*0.18,topY); treeCtx.lineTo(cx+tw*0.18,topY); treeCtx.quadraticCurveTo(cx+tw*0.6,topY+treeHeight*0.35,cx+tw/2,baseY); treeCtx.closePath(); treeCtx.fill();
-        const growth = Math.max(0,Math.min(1,treeHeight/Math.max(1,maxTreeHeight)));
-        const cbase = Math.min(cw*0.48,maxTreeHeight*0.6), cr = cbase*(0.6+0.9*growth);
+  const growth = Math.max(0,Math.min(1,treeHeight/Math.max(1,maxTreeHeight)));
+  const cbaseRaw = Math.min(cw * 0.48, maxTreeHeight * 0.6);
+  const crUnclamped = cbaseRaw * (0.6 + 0.9 * growth);
+  const maxAllowedByWidth = Math.max(10, (cw * 0.5) - 10);
+  const maxAllowedByHeight = Math.max(10, (topY - 8) > 0 ? (topY - 8) : (maxTreeHeight * 0.5));
+  const cr = Math.min(crUnclamped, maxAllowedByWidth, maxAllowedByHeight);
         for (let i=0;i<7;i++){ const ang=(i/7)*Math.PI*2 + (i%2?0.3:-0.3); const sway=Math.sin(performance.now()/800+i)*(4*Math.min(1,growth)); const spread=cr*(0.35+0.25*Math.sin(i*1.3))+sway; const bx=cx+Math.cos(ang)*spread*(0.4+0.6*growth); const by=topY-Math.abs(Math.sin(ang))*cr*0.35-cr*0.15; const br=cr*(0.45+0.25*Math.cos(i*1.1))*(0.7+0.6*growth); const rg=treeCtx.createRadialGradient(bx,by,br*0.1,bx,by,br); rg.addColorStop(0,`rgba(200,255,180,${0.95*growth})`); rg.addColorStop(0.6,`rgba(90,180,80,${0.85*growth})`); rg.addColorStop(1,`rgba(30,110,40,${0.9*growth})`); treeCtx.fillStyle=rg; treeCtx.beginPath(); treeCtx.arc(bx,by,br,0,Math.PI*2); treeCtx.fill(); }
         for (let i=0;i<36;i++){ const t=i/36, a=t*Math.PI*2 + Math.sin(t*7)*0.3; const r=cr*(0.12+0.75*Math.abs(Math.cos(t*5))); const lx=cx+Math.cos(a)*r*(0.6+0.6*growth)+(Math.sin(i*3.1)*2); const ly=topY-Math.abs(Math.sin(a))*cr*0.35-(Math.cos(i*2.7)*2); const lr=Math.max(1,Math.round(1+growth*3*Math.abs(Math.sin(i*2.3)))); const s=seasonSelect?seasonSelect.value:'summer'; let col;
           if (s==='autumn'){ const R=200+Math.floor(55*Math.abs(Math.sin(i*1.9))), G=90+Math.floor(60*Math.abs(Math.cos(i*1.9))), B=30+Math.floor(20*growth); col=`rgba(${R},${G},${B},${0.95*growth})`; }
@@ -312,12 +316,9 @@
       const animate = () => {
         const now = Date.now();
         const remaining = timeLeft>0?Math.max(0,timeLeft-(isRunning?(now - startTime + pausedTime):0)):0;
-
-        // update growth / finish logic when running
         if (isRunning && timeLeft > 0) {
           const elapsed = now - startTime + pausedTime;
           if (elapsed >= timeLeft) {
-            // finished
             isRunning = false;
             startPauseBtn.textContent = 'Start';
             input.disabled = false;
@@ -330,17 +331,15 @@
             playFinishChime();
           } else {
             const growth = Math.min(1, elapsed / (totalSeconds * 1000));
-            treeHeight = growth * maxTreeHeight;
+            treeHeight = Math.min(maxTreeHeight, growth * maxTreeHeight);
             drawTime(formatTime(Math.max(0, timeLeft - elapsed)));
             drawTree();
           }
         } else {
-          // not running: just render current state
           drawTime(formatTime(remaining));
           drawTree();
         }
 
-        // update falling leaves if active
         if (leafFallActive) for (let i=leaves.length-1;i>=0;i--){ const L=leaves[i]; L.vy+=0.06; L.vx*=0.995; L.x+=L.vx; L.y+=L.vy; L.rot+=L.spin; treeCtx.save(); treeCtx.translate(L.x,L.y); treeCtx.rotate(L.rot); treeCtx.fillStyle=L.color; treeCtx.beginPath(); treeCtx.ellipse(0,0,L.r*1.1,L.r*0.6,0,0,Math.PI*2); treeCtx.fill(); treeCtx.restore(); if (L.y>treeCanvas.clientHeight+20||L.x<-50||L.x>treeCanvas.clientWidth+50) leaves.splice(i,1); }
 
         animationId=requestAnimationFrame(animate);
@@ -359,12 +358,31 @@
       };
   const resetTimer = ()=>{ isRunning=false; startPauseBtn.textContent='Start'; input.disabled=false; input.value=''; input.placeholder='Time in seconds'; treeHeight=0; timeLeft=0; pausedTime=0; drawTime('00:00:00'); drawTree(); leafFallActive=false; leaves.length=0; };
       startPauseBtn.addEventListener('click', ()=> isRunning?pauseTimer():startTimer()); resetBtn.addEventListener('click', resetTimer);
-      // keyboard shortcuts: Space toggles start/pause, R resets
+
       window.addEventListener('keydown', (e) => {
         if (e.code === 'Space') { e.preventDefault(); isRunning?pauseTimer():startTimer(); }
         if (e.key === 'r' || e.key === 'R') { resetTimer(); }
       });
-      if(musicBtn&&bgMusic) musicBtn.addEventListener('click', ()=>{ if(bgMusic.paused){ const p=bgMusic.play(); if(p&&typeof p.then==='function') p.then(()=>musicBtn.textContent='Pause Music').catch(()=>musicBtn.textContent='Play Music'); else musicBtn.textContent='Pause Music'; } else { bgMusic.pause(); musicBtn.textContent='Play Music'; } });
+      if (musicBtn && bgMusic) {
+        bgMusic.addEventListener('play', () => musicBtn.textContent = 'Pause Music');
+        bgMusic.addEventListener('pause', () => musicBtn.textContent = 'Play Music');
+        musicBtn.addEventListener('click', async () => {
+          try { const c = ensureAudio(); if (c && c.state === 'suspended') await c.resume(); } catch (e) { /* ignore */ }
+          if (bgMusic.paused) {
+            try {
+              const p = bgMusic.play();
+              if (p && typeof p.then === 'function') await p;
+              musicBtn.textContent = 'Pause Music';
+            } catch (err) {
+              console.warn('bgMusic.play() failed:', err);
+              musicBtn.textContent = 'Play Music';
+            }
+          } else {
+            bgMusic.pause();
+            musicBtn.textContent = 'Play Music';
+          }
+        });
+      }
       const primeAudio = ()=>{ const c=ensureAudio(); if(c&&c.state==='suspended') c.resume().catch(()=>{}); };
       [startPauseBtn,resetBtn,musicBtn,seasonSelect].forEach(el=>el&&el.addEventListener('click',primeAudio,{once:true}));
       seasonSelect&&seasonSelect.addEventListener('change',()=>drawTree());
