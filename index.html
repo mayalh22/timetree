@@ -171,6 +171,34 @@
         if (!audioCtx) try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ audioCtx = null; }
         return audioCtx;
       };
+      let bgSynthNodes = null;
+      let bgSynthActive = false;
+      let remoteMusicAvailable = false;
+      const startBgSynth = () => {
+        const ctx = ensureAudio(); if (!ctx) return;
+        if (bgSynthActive) return; bgSynthActive = true;
+        const master = ctx.createGain(); master.gain.value = 0.0001; master.connect(ctx.destination);
+        master.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.8);
+        const osc1 = ctx.createOscillator(); osc1.type = 'sine'; osc1.frequency.value = 220;
+        const osc2 = ctx.createOscillator(); osc2.type = 'triangle'; osc2.frequency.value = 110;
+        const mix = ctx.createGain(); mix.gain.value = 0.6; osc1.connect(mix); osc2.connect(mix);
+        const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 800;
+        mix.connect(filter); filter.connect(master);
+        const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.08;
+        const lfoGain = ctx.createGain(); lfoGain.gain.value = 400; lfo.connect(lfoGain); lfoGain.connect(filter.frequency);
+        osc1.start(); osc2.start(); lfo.start();
+        bgSynthNodes = { master, osc1, osc2, mix, filter, lfo, lfoGain };
+      };
+      const stopBgSynth = () => {
+        const ctx = audioCtx; if (!ctx || !bgSynthActive || !bgSynthNodes) return; bgSynthActive = false;
+        const now = ctx.currentTime;
+        try { bgSynthNodes.master.gain.cancelScheduledValues(now); bgSynthNodes.master.gain.linearRampToValueAtTime(0.0001, now+0.6); } catch(e){}
+        setTimeout(()=>{
+          try { bgSynthNodes.osc1.stop(); bgSynthNodes.osc2.stop(); bgSynthNodes.lfo.stop(); } catch(e){}
+          try { bgSynthNodes.osc1.disconnect(); bgSynthNodes.osc2.disconnect(); bgSynthNodes.lfo.disconnect(); bgSynthNodes.lfoGain.disconnect(); bgSynthNodes.filter.disconnect(); bgSynthNodes.mix.disconnect(); bgSynthNodes.master.disconnect(); } catch(e){}
+          bgSynthNodes = null;
+        }, 700);
+      };
       const playFinishChime = () => {
         const ctx = ensureAudio(); if (!ctx) return;
         const notes = [880,1100,1320], now = ctx.currentTime;
@@ -341,14 +369,11 @@
           drawTime(formatTime(remaining));
           drawTree();
         }
-
         if (leafFallActive) for (let i=leaves.length-1;i>=0;i--){ const L=leaves[i]; L.vy+=0.06; L.vx*=0.995; L.x+=L.vx; L.y+=L.vy; L.rot+=L.spin; treeCtx.save(); treeCtx.translate(L.x,L.y); treeCtx.rotate(L.rot); treeCtx.fillStyle=L.color; treeCtx.beginPath(); treeCtx.ellipse(0,0,L.r*1.1,L.r*0.6,0,0,Math.PI*2); treeCtx.fill(); treeCtx.restore(); if (L.y>treeCanvas.clientHeight+20||L.x<-50||L.x>treeCanvas.clientWidth+50) leaves.splice(i,1); }
-
         animationId=requestAnimationFrame(animate);
       };
       const spawnLeaves = (n=24)=>{ leafFallActive=true; for(let i=0;i<n;i++){ const r=6+Math.random()*6, x=treeCanvas.clientWidth/2+(Math.random()-0.5)*80, y=Math.max(0,(treeCanvas.clientHeight-treeHeight)-Math.random()*40), vx=(Math.random()-0.5)*1.6, vy=-1-Math.random()*0.5, spin=(Math.random()-0.5)*0.12, s=seasonSelect?seasonSelect.value:'summer'; let color='rgba(200,220,120,0.95)'; if(s==='autumn') color=`rgba(${210+Math.floor(Math.random()*30)},${80+Math.floor(Math.random()*50)},${30+Math.floor(Math.random()*20)},0.98)`; if(s==='spring') color='rgba(180,240,140,0.9)'; if(s==='winter') color='rgba(220,230,220,0.8)'; leaves.push({x,y,vx,vy,r,rot:Math.random()*Math.PI,spin,color}); } };
       const pauseTimer = ()=>{ if(!isRunning) return; isRunning=false; startPauseBtn.textContent='Start'; pausedTime+=Date.now()-startTime; };
-      
       const startTimer = ()=>{
         if (isRunning) return;
         if (timeLeft <= 0) {
@@ -360,14 +385,12 @@
       };
   const resetTimer = ()=>{ isRunning=false; startPauseBtn.textContent='Start'; input.disabled=false; input.value=''; input.placeholder='Time in seconds'; treeHeight=0; timeLeft=0; pausedTime=0; drawTime('00:00:00'); drawTree(); leafFallActive=false; leaves.length=0; };
       startPauseBtn.addEventListener('click', ()=> isRunning?pauseTimer():startTimer()); resetBtn.addEventListener('click', resetTimer);
-
       window.addEventListener('keydown', (e) => {
         if (e.code === 'Space') { e.preventDefault(); isRunning?pauseTimer():startTimer(); }
         if (e.key === 'r' || e.key === 'R') { resetTimer(); }
       });
       const musicFile = $('musicFile');
       const loadMusicBtn = $('loadMusicBtn');
-
       if (loadMusicBtn && musicFile) {
         loadMusicBtn.addEventListener('click', ()=> musicFile.click());
         musicFile.addEventListener('change', ()=>{
@@ -377,28 +400,22 @@
           catch(e){ console.warn('Failed to load local music file', e); }
         });
       }
-
       if (musicBtn && bgMusic) {
         bgMusic.addEventListener('play', () => musicBtn.textContent = 'Pause Music');
         bgMusic.addEventListener('pause', () => musicBtn.textContent = 'Play Music');
         musicBtn.addEventListener('click', async () => {
           try { const c = ensureAudio(); if (c && c.state === 'suspended') await c.resume(); } catch (e) { /* ignore */ }
-          if (bgMusic.paused) {
-            try {
-              const p = bgMusic.play();
-              if (p && typeof p.then === 'function') await p;
-              musicBtn.textContent = 'Pause Music';
-            } catch (err) {
-              console.warn('bgMusic.play() failed:', err);
-              musicBtn.textContent = 'Play Music';
-            }
+          if (remoteMusicAvailable && bgMusic.src) {
+            if (bgMusic.paused) {
+              try { const p = bgMusic.play(); if (p && typeof p.then === 'function') await p; }
+              catch (err) { console.warn('bgMusic.play() failed:', err); }
+            } else { bgMusic.pause(); }
           } else {
-            bgMusic.pause();
-            musicBtn.textContent = 'Play Music';
+            if (!bgSynthActive) startBgSynth(); else stopBgSynth();
+            musicBtn.textContent = bgSynthActive ? 'Pause Music' : 'Play Music';
           }
         });
       }
-      
       (async function verifyRemoteMusic(){
         try {
           const srcEl = bgMusic.querySelector('source');
@@ -411,9 +428,11 @@
           bgMusic.src = blobUrl;
           bgMusic.load();
           if (loadMusicBtn) loadMusicBtn.disabled = false;
+          remoteMusicAvailable = true;
         } catch (err) {
           console.warn('Remote music unavailable:', err);
-          if (musicBtn) { musicBtn.disabled = true; musicBtn.textContent = 'Music Unavailable'; }
+          remoteMusicAvailable = false;
+          if (musicBtn) { musicBtn.disabled = false; musicBtn.textContent = 'Play Music'; }
           if (loadMusicBtn) loadMusicBtn.disabled = false;
         }
       })();
@@ -426,5 +445,4 @@
   </script>
 </body>
 </html>
-
-\\ made by Maya Hazarika w/ help from Gemini and Copilot: maya.l.hazarika@gmail.com \\
+<!-- made by Maya Hazarika w/ help from Gemini and Copilot: maya.l.hazarika@gmail.com -->
