@@ -21,3 +21,5 @@ It is simple in aesthetic and code: not needing external libraries or frameworks
 I used gemini for help with the pause timer function and overall syntax feedback and I used copilot for help fixing indent errors
 
 thanks!
+
+[![Athena Award Badge](https://img.shields.io/endpoint?url=https%3A%2F%2Faward.athena.hackclub.com%2Fapi%2Fbadge)](https://award.athena.hackclub.com?utm_source=readme)
